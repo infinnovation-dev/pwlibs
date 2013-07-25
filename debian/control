@@ -1,0 +1,28 @@
+Source: pwlibs
+Priority: extra
+Maintainer: Colin Hogben (Piwall software) <colin@piwall.co.uk>
+Build-Depends: debhelper (>= 8.0.0), autotools-dev, libglib2.0-dev, pkg-config
+Standards-Version: 3.9.3
+Section: libs
+Homepage: http://www.piwall.co.uk/
+#Vcs-Git: git://git.debian.org/collab-maint/pwlibs.git
+#Vcs-Browser: http://git.debian.org/?p=collab-maint/pwlibs.git;a=summary
+
+Package: pwlibs-dev
+Section: libdevel
+Architecture: any
+Depends: pwlibs1 (= ${binary:Version}), ${misc:Depends}
+Description: Development files for using PiWall libraries
+ Include files for building against libpwutil and libpwtilemap
+
+Package: pwlibs1
+Section: libs
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: Libraries for PiWall video wall
+ libpwutil and libpwtilemap are libraries used by components of the
+ PiWall Video Wall system.
+ libpwutil contains functions for converting command-line arguments and
+ configuration values into an internal form.
+ libpwtilemap supports geometry mapping from user coordinates, picture
+ size and orientation to values needed by VideoCore interface libraries.
