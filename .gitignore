@@ -5,6 +5,8 @@ autom4te.cache
 compile
 config.*
 configure
+debian/*.ex
+debian/*.EX
 depcomp
 install-sh
 libtool
