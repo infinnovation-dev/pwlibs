@@ -1,0 +1,7 @@
+pwlibs-dev
+pwlibs1
+files
+tmp
+*.debhelper
+*.substvars
+*.symbols
