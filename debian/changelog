@@ -1,3 +1,9 @@
+pwlibs (1.1) unstable; urgency=low
+
+  * Add libpwglog and pw_IPaint.h
+
+ -- Colin Hogben (Piwall software) <colin@piwall.co.uk>  Tue, 06 Aug 2013 12:46:33 +0100
+
 pwlibs (1.0) unstable; urgency=low
 
   * Initial Release.

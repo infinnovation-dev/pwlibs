@@ -13,7 +13,7 @@ Section: libdevel
 Architecture: any
 Depends: pwlibs1 (= ${binary:Version}), ${misc:Depends}
 Description: Development files for using PiWall libraries
- Include files for building against libpwutil and libpwtilemap
+ Include files for building against libpwutil, libpwtilemap and libpwglog
 
 Package: pwlibs1
 Section: libs
@@ -22,7 +22,11 @@ Depends: ${shlibs:Depends}, ${misc:Depends}
 Description: Libraries for PiWall video wall
  libpwutil and libpwtilemap are libraries used by components of the
  PiWall Video Wall system.
+ .
  libpwutil contains functions for converting command-line arguments and
  configuration values into an internal form.
+ .
  libpwtilemap supports geometry mapping from user coordinates, picture
  size and orientation to values needed by VideoCore interface libraries.
+ .
+ libpwglog provides helpers for logging using GLib.
