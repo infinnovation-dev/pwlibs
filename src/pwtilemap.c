@@ -22,6 +22,8 @@
 #include "pwutil.h"
 #include <stdio.h>
 #include <string.h>
+#include <errno.h>
+#include <sys/utsname.h>
 
 #ifdef __GNUC__
 #  define UNUSED(x) UNUSED_ ## x __attribute__((__unused__))
@@ -67,6 +69,8 @@ struct _PwTileMap {
 #define ERROR(_n,...) g_set_error(error, PWTILEMAP_ERROR,_n, __VA_ARGS__)
 
 /* Forward declarations */
+static char *
+_pwtilemap_tile_id(GError **error);
 static char *
 _pwtilemap_pitile_id(GError **error);
 static gboolean
@@ -249,7 +253,7 @@ pwtilemap_define(PwTileMap *self, GError **error)
       ERROR(0, "No [%s] section in ~/.piwall", self->config);
       goto fail;
     }
-    if ((id = _pwtilemap_pitile_id(error)) == NULL) {
+    if ((id = _pwtilemap_tile_id(error)) == NULL) {
       goto fail;
     }
     if ((role = g_key_file_get_string(piwall, self->config, id, error)) == NULL) {
@@ -264,7 +268,7 @@ pwtilemap_define(PwTileMap *self, GError **error)
     
   } else if (self->flags & WANT_AUTO) {
     /* Get role (id) from .pitile */
-    if ((id = _pwtilemap_pitile_id(error)) == NULL) {
+    if ((id = _pwtilemap_tile_id(error)) == NULL) {
       goto fail;
     }
 
@@ -278,6 +282,25 @@ pwtilemap_define(PwTileMap *self, GError **error)
   g_free(role);
   g_free(id);
   return result;
+}
+
+/*-----------------------------------------------------------------------
+ *	Get the tile id from .pitile or fall back to hostname
+ *-----------------------------------------------------------------------*/
+static char *
+_pwtilemap_tile_id(GError **error)
+{
+  char *id = _pwtilemap_pitile_id(error);
+  if (id == NULL) {
+    struct utsname uts;
+    g_clear_error(error);
+    if (uname(&uts) < 0) {
+      ERROR(0, "Error from uname(): %s", g_strerror(errno));
+      return NULL;
+    }
+    id = g_strdup(uts.nodename);
+  }
+  return id;
 }
 
 /*-----------------------------------------------------------------------
