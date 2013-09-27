@@ -1,3 +1,13 @@
+pwlibs (1.2) unstable; urgency=low
+
+  * Added trace functions
+
+  * Tile id defaults to hostname
+
+  * Tolerate whitespace at end of keyfile options
+
+ -- Colin Hogben (Piwall software) <colin@piwall.co.uk>  Fri, 27 Sep 2013 21:12:27 +0100
+
 pwlibs (1.1) unstable; urgency=low
 
   * Add libpwglog and pw_IPaint.h
