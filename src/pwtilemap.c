@@ -80,6 +80,12 @@ static gboolean
 _pwtilemap_get_rect(GKeyFile *keyfile, const gchar *section, PwRect *rect,
 		    GError **error);
 static GKeyFile *_pwtilemap_keyfile(const gchar *dotfile, GError **);
+static gdouble _pwtilemap_kf_double(GKeyFile *keyfile,
+				    const gchar *group, const gchar *key,
+				    GError **error);
+static gchar * _pwtilemap_kf_string(GKeyFile *keyfile,
+				    const gchar *group, const gchar *key,
+				    GError **error);
 
 static void scale_init(Scale *self, gdouble factor, gdouble offset);
 static void scale_from_factor_point(Scale *self, gdouble factor, gdouble old, gdouble new);
@@ -256,7 +262,7 @@ pwtilemap_define(PwTileMap *self, GError **error)
     if ((id = _pwtilemap_tile_id(error)) == NULL) {
       goto fail;
     }
-    if ((role = g_key_file_get_string(piwall, self->config, id, error)) == NULL) {
+    if ((role = _pwtilemap_kf_string(piwall, self->config, id, error)) == NULL) {
       g_clear_error(error);
       ERROR(0, "No [%s]%s in ~/.piwall", self->config, id);
       goto fail;
@@ -324,7 +330,7 @@ _pwtilemap_pitile_id(GError **error)
     ERROR(0, "No [tile] section in ~/.pitile");
     goto fail;
   }
-  if ((id = g_key_file_get_string(pitile, "tile", "id", error)) == NULL) {
+  if ((id = _pwtilemap_kf_string(pitile, "tile", "id", error)) == NULL) {
     g_clear_error(error);
     ERROR(0, "No [tile]id in ~/.pitile");
     goto fail;
@@ -357,7 +363,7 @@ _pwtilemap_from_role(PwTileMap *self, const gchar *role, GKeyFile *piwall,
 
   if (! (self->flags & HAVE_WALL)) {
     /* Get role's optional wall name, default "wall" */
-    if ((wall_s = g_key_file_get_string(piwall, role, "wall", error)) == NULL) {
+    if ((wall_s = _pwtilemap_kf_string(piwall, role, "wall", error)) == NULL) {
       g_clear_error(error);
       wall_s = g_strdup("wall");
     }
@@ -376,7 +382,7 @@ _pwtilemap_from_role(PwTileMap *self, const gchar *role, GKeyFile *piwall,
   }
 
   if (! (self->flags & HAVE_ORIENT)) {
-    if ((orient_s = g_key_file_get_string(piwall, role, "orient", error)) == NULL) {
+    if ((orient_s = _pwtilemap_kf_string(piwall, role, "orient", error)) == NULL) {
       /* orient is optional */
       g_clear_error(error);
       self->orient = PW_ORIENT_UP;
@@ -403,23 +409,27 @@ _pwtilemap_get_rect(GKeyFile *keyfile, const gchar *section, PwRect *rect,
   double x, y, width, height;
 
   /* Get x and y, but assume 0 if absent */
-  x = g_key_file_get_double(keyfile, section, "x", error);
-  if (*error && (*error)->code == G_KEY_FILE_ERROR_KEY_NOT_FOUND) {
+  x = _pwtilemap_kf_double(keyfile, section, "x", error);
+  if (g_error_matches(*error,
+		      G_KEY_FILE_ERROR, G_KEY_FILE_ERROR_KEY_NOT_FOUND)) {
     g_clear_error(error);
+    x = 0.0;
   } else if (*error) {
     return FALSE;
   }
-  y = g_key_file_get_double(keyfile, section, "y", error);
-  if (*error && (*error)->code == G_KEY_FILE_ERROR_KEY_NOT_FOUND) {
+  y = _pwtilemap_kf_double(keyfile, section, "y", error);
+  if (g_error_matches(*error,
+		      G_KEY_FILE_ERROR, G_KEY_FILE_ERROR_KEY_NOT_FOUND)) {
     g_clear_error(error);
+    y = 0.0;
   } else if (*error) {
     return FALSE;
   }
 
   /* width and height must be present */
-  width = g_key_file_get_double(keyfile, section, "width", error);
+  width = _pwtilemap_kf_double(keyfile, section, "width", error);
   if (*error) return FALSE;
-  height = g_key_file_get_double(keyfile, section, "height", error);
+  height = _pwtilemap_kf_double(keyfile, section, "height", error);
   if (*error) return FALSE;
 
   PWRECT_SET(*rect, x, y, x+width, y+height);
@@ -548,6 +558,44 @@ _pwtilemap_keyfile(const gchar *dotfile, GError **error)
   }
   g_free(filename);
   return keyfile;
+}
+
+/* Extract double, tolerant of trailing whitespace */
+static gdouble
+_pwtilemap_kf_double(GKeyFile *keyfile, const gchar *group, const gchar *key,
+		     GError **error)
+{
+  gdouble result;
+  gchar *value;
+
+  value = g_key_file_get_value(keyfile, group, key, error);
+  if (! value) {
+    return 0.0;
+  } else {
+    gchar *end;
+    value = g_strchomp(value); /* Remove trailing whitespace */
+    result = g_ascii_strtod(value, &end);
+
+    if (end == value || *end  != '\0') {
+      g_set_error(error, G_KEY_FILE_ERROR, G_KEY_FILE_ERROR_INVALID_VALUE,
+		  "Invalid real number for key %s in group %s",
+		  key, group);
+    }
+    g_free(value);
+  }
+  return result;
+}
+
+/* Extract string, removing trailing whitespace */
+static gchar *
+_pwtilemap_kf_string(GKeyFile *keyfile, const gchar *group, const gchar *key,
+		     GError **error)
+{
+  gchar *string = g_key_file_get_string(keyfile, group, key, error);
+  if (string != NULL) {
+    string = g_strchomp(string);
+  }
+  return string;
 }
 
 /*-----------------------------------------------------------------------
