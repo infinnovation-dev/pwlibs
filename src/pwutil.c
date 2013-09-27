@@ -19,8 +19,11 @@
  *	Utility functions
  *=======================================================================*/
 #include "pwutil.h"
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
+#include <time.h>
 
 #define PWUTIL_ERROR pwutil_error_quark()
 
@@ -137,3 +140,155 @@ pwfit_from_string(PwFit *fit, const gchar *str, GError **error)
   }
   return TRUE;
 }
+
+/*-----------------------------------------------------------------------
+ *	Trace object
+ *-----------------------------------------------------------------------*/
+struct _PwTrace {
+  FILE *file;
+  guint left;			/* How many more records to write */
+};
+
+/* Limit tracing to this number of calls */
+#define PWTRACE_DEFAULT_COUNT	1000
+
+/*-----------------------------------------------------------------------
+ *	Open trace object
+ *	Filename from ${name}_TRACEFILE environment variable
+ *	Number of records from ${name}_COUNT environment variable
+ *-----------------------------------------------------------------------*/
+PwTrace *
+pwtrace_open(const char *name)
+{
+  FILE *file;
+  gchar *envvar;
+  const gchar *filename, *svalue;
+  PwTrace *self = NULL;
+
+  if (name == NULL) {
+    envvar = g_strdup("TRACEFILE");
+  } else {
+    envvar = g_strdup_printf("%s_TRACEFILE", name);
+  }
+  filename = g_getenv(envvar);
+  if (filename != NULL) {
+    file = fopen(filename, "a");
+    if (file == NULL) {
+      g_printerr("Cannot open %s", filename);
+    } else {
+      guint stublen = strlen(envvar) - 9;
+      guint count;
+      gchar *buffer = NULL;
+
+      /* Replace TRACEFILE with BUFSIZE */
+      strcpy(envvar + stublen, "BUFSIZE");
+      svalue = g_getenv(envvar);
+      if (svalue != NULL) {
+	guint bufsize = atoi(svalue);
+	buffer = g_malloc(bufsize);
+	setvbuf(file, buffer, _IOFBF, bufsize);
+      }
+	
+      /* Replace TRACEFILE with COUNT */
+      strcpy(envvar + stublen, "COUNT");
+      svalue = g_getenv(envvar);
+      if (svalue == NULL) {
+	count = PWTRACE_DEFAULT_COUNT;
+      } else {
+	count = atoi(svalue);
+      }
+
+      self = g_new(PwTrace, 1);
+      self->file = file;
+      self->left = count;
+    }
+  }
+  g_free(envvar);
+  return self;
+}
+
+void
+pwtrace_close(PwTrace *self)
+{
+  if (self == NULL || self->file == NULL) return;
+  fclose(self->file);
+  self->file = NULL;
+}
+
+/*-----------------------------------------------------------------------
+ *	Formatted trace output
+ *-----------------------------------------------------------------------*/
+void
+pwtracef(PwTrace *self, const char *fmt, ...)
+{
+  va_list ap;
+  struct timespec now;
+  guint count, i;
+  guchar c;
+
+  if (self == NULL || self->file == NULL) return;
+
+  clock_gettime(CLOCK_MONOTONIC_RAW, &now);
+  fprintf(self->file, "%lu.%06ld",
+	  now.tv_sec, now.tv_nsec / 1000);
+
+  va_start(ap, fmt);
+  while (1) {
+    c = *fmt++;
+    if (c == '\0') break;
+    /* Optional repeat count */
+    if (isdigit(c)) {
+      count = 0;
+      do {
+	count = 10 * count + c-'0';
+	c = *fmt++;
+	if (c == '\0') break;
+      } while (isdigit(c));
+    } else if (c == '*') {
+      count = va_arg(ap, unsigned int);
+      c = *fmt++;
+      if (c == '\0') break;
+    } else {
+      count = 1;
+    }
+    if (c == 'i') {
+      for (i=0; i < count; i++) {
+	int ival = va_arg(ap, int);
+	fprintf(self->file, " %d", ival);
+      }
+    } else if (c == 'u') {
+      for (i=0; i < count; i++) {
+	unsigned int ival = va_arg(ap, unsigned int);
+	fprintf(self->file, " %u", ival);
+      }
+    } else if (c == 'x') {
+      for (i=0; i < count; i++) {
+	unsigned int ival = va_arg(ap, unsigned int);
+	fprintf(self->file, " %x", ival);
+      }
+    } else if (c == 's') {
+      for (i=0; i < count; i++) {
+	const char *str = va_arg(ap, const char *);
+	fprintf(self->file, " %s", str);
+      }
+    } else if (c == 'b') {
+      const guchar *bytes = va_arg(ap, const guchar *);
+      for (i=0; i < count; i++) {
+	guchar b = *bytes++;
+	fprintf(self->file, " %02x", b);
+      }
+    } else {
+      fprintf(self->file, "?");
+      break;
+    }
+  }
+  va_end(ap);
+  fprintf(self->file, "\n");
+
+  /* Close if requested count reached */
+  if (-- self->left == 0) {
+    fclose(self->file);
+    self->file = NULL;
+  }
+}
+

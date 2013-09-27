@@ -24,7 +24,7 @@ Description: Libraries for PiWall video wall
  PiWall Video Wall system.
  .
  libpwutil contains functions for converting command-line arguments and
- configuration values into an internal form.
+ configuration values into an internal form, and tracing.
  .
  libpwtilemap supports geometry mapping from user coordinates, picture
  size and orientation to values needed by VideoCore interface libraries.

@@ -39,4 +39,11 @@ extern gboolean pworient_from_string(PwOrient *, const gchar *, GError **);
 /* Convert e.g. "letterbox" to PwFit */
 extern gboolean pwfit_from_string(PwFit *, const gchar *, GError **);
 
+/* Trace into a file, controlled by environment variable(s) */
+typedef struct _PwTrace PwTrace;
+
+extern PwTrace *pwtrace_open(const char */*name*/);
+extern void pwtracef(PwTrace *, const char */*format*/, ...);
+extern void pwtrace_close(PwTrace *);
+
 #endif /* INC_pwutil_h */
