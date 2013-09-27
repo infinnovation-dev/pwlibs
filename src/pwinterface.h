@@ -21,10 +21,10 @@
 #ifndef INC_pwinterface_h
 #define INC_pwinterface_h
 
-/* Check in interface implements method */
+/* Check if interface implements method */
 #define PW_CAN(_i,_m) ((_i) && ((const char *)&((_i)->methods->_m) - (const char *)((_i)->methods)) < (_i)->methods->size && (_i)->methods->_m)
 
-/* Call methid in interface */
+/* Call method in interface */
 #define PW_CALL(_i,_m,...) (((_i)->methods->_m)((_i)->priv, __VA_ARGS__))
 
 #endif /* INC_pwinterface_h */
