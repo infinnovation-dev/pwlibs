@@ -244,13 +244,13 @@ pwtilemap_define(PwTileMap *self, GError **error)
       PWRECT_SET0(self->wall, 16*(fx+1), 9*(fy+1));
       PWRECT_SET(self->tile, 16*0, 9*fy, 16*1, 9*(fy+1));
       break;
-    case 44:			/* 2x2, top right */
+    case 44:			/* 2x2, bottom right */
       PWRECT_SET0(self->wall, 16*(fx+1), 9*(fy+1));
       PWRECT_SET(self->tile, 16*fx, 9*fy, 16*(fx+1), 9*(fy+1));
       break;
     default:
-      /* Full screen - use defaults previously set */
-      ;
+      ERROR(0, "Unknown tile code %d", self->canned);
+      goto fail;
     }
 
   } else if (self->flags & WANT_CONFIG) {
