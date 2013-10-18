@@ -2,6 +2,6 @@ pwlibs-dev
 pwlibs1
 files
 tmp
-*.debhelper
+*.debhelper*
 *.substvars
 *.symbols

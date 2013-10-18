@@ -1,4 +1,4 @@
-include_HEADERS = pwtypes.h pwinterface.h pw_IPaint.h \
+include_HEADERS = pwtypes.h pwinterface.h pw_IPaint.h pw_IRead.h pw_IWrite.h \
 	pwutil.h pwtilemap.h pwglog.h
 lib_LTLIBRARIES = libpwutil.la libpwtilemap.la libpwglog.la
 
