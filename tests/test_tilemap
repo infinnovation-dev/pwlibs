@@ -1,0 +1,182 @@
+#!/bin/sh
+
+. ./pwltest.sh
+
+pwl_start
+
+#-----------------------------------------------------------------------
+#	Simple with no .pitile / .piwall
+#-----------------------------------------------------------------------
+pwl_run ./ttilemap 1920x1080+0+0 640x480+0+0
+pwl_expect << EOF
+== out ==
+src: 640x480+0+0
+dest: 1920x1080+0+0
+transform: 0
+EOF
+
+pwl_run ./ttilemap --fit=letterbox 1920x1080+0+0 640x480+0+0
+pwl_expect << EOF
+== out ==
+src: 640x480+0+0
+dest: 1440x1080+240+0
+transform: 0
+EOF
+
+pwl_run ./ttilemap --fit=clip 1920x1080+0+0 640x480+0+0
+pwl_expect << EOF
+== out ==
+src: 640x360+0+60
+dest: 1920x1080+0+0
+transform: 0
+EOF
+
+#-----------------------------------------------------------------------
+#	Error conditions
+#-----------------------------------------------------------------------
+pwl_piwall <<EOF
+EOF
+
+pwl_run ./ttilemap --config=full 1920x1080+0+0 640x480+0+0
+pwl_expect <<EOF
+== rc ==
+1
+== err ==
+No [full] section in ~/.pitile or ~/.piwall
+EOF
+
+pwl_pitile <<EOF
+[tile]
+id=pi93
+EOF
+
+pwl_run ./ttilemap --autotile 1920x1080+0+0 640x480+0+0
+pwl_expect <<EOF
+== rc ==
+1
+== err ==
+No [pi93] section in ~/.pitile or ~/.piwall
+EOF
+
+pwl_piwall <<EOF
+[full]
+pi71=full_1
+pi72=full_2
+EOF
+
+pwl_run ./ttilemap --config=full 1920x1080+0+0 640x480+0+0
+pwl_expect <<EOF
+== rc ==
+1
+== err ==
+No pi93 in [full] in ~/.pitile or ~/.piwall
+EOF
+
+pwl_piwall <<EOF
+[full]
+pi93=full_1
+pi94=full_2
+EOF
+
+pwl_run ./ttilemap --config=full 1920x1080+0+0 640x480+0+0
+pwl_expect <<EOF
+== rc ==
+1
+== err ==
+No [full_1] section in ~/.pitile or ~/.piwall
+EOF
+
+pwl_piwall <<EOF
+[full]
+pi93=full_1
+pi94=full_2
+
+[full_1]
+width=120
+
+[wall]
+width=240
+height=160
+
+EOF
+
+pwl_run ./ttilemap --config=full 1920x1080+0+0 640x480+0+0
+pwl_expect <<EOF
+== rc ==
+1
+== err ==
+No height in [full_1] in ~/.pitile or ~/.piwall
+EOF
+
+#-----------------------------------------------------------------------
+#	Bottom-left of 4-screen wall
+#-----------------------------------------------------------------------
+pwl_pitile <<EOF
+[tile]
+id=pi93
+EOF
+
+pwl_piwall <<EOF
+[wall]
+width=32
+height=18
+
+[nobez]
+pi93=nobez_03
+
+[nobez_03]
+width=16
+height=9
+x=0
+y=9
+EOF
+
+pwl_run ./ttilemap --config=nobez 1920x1080+0+0 640x480+0+0
+pwl_expect << EOF
+== out ==
+src: 320x240+0+240
+dest: 1920x1080+0+0
+transform: 0
+EOF
+
+#-----------------------------------------------------------------------
+#	Rotated
+#-----------------------------------------------------------------------
+pwl_piwall <<EOF
+[3vert]
+pi31=3vert_1
+pi32=3vert_2
+pi33=3vert_3
+
+[3vert_wall]
+width=27
+height=16
+
+[3vert_1]
+width=9
+height=16
+orient=left
+wall=3vert_wall
+
+[3vert_2]
+width=9
+height=16
+x=9
+orient=left
+wall=3vert
+EOF
+
+pwl_pitile <<EOF
+[tile]
+id=pi31
+EOF
+
+pwl_run ./ttilemap --config=3vert 1920x1080+0+0 1920x1080+0+0
+pwl_expect <<EOF
+== out ==
+src: 640x1080+0+0
+dest: 1920x1080+0+0
+transform: 6
+EOF
+
+pwl_end
