@@ -63,6 +63,7 @@ struct _PwTileMap {
   PwOrient orient;
   PwFit fit;
   PwIntRect screen;
+  PwDefs *defs;
 };
 
 #define PWTILEMAP_ERROR pwtilemap_error_quark()
@@ -70,22 +71,15 @@ struct _PwTileMap {
 
 /* Forward declarations */
 static char *
-_pwtilemap_tile_id(GError **error);
+_pwtilemap_tile_id(PwTileMap *self, GError **error);
 static char *
-_pwtilemap_pitile_id(GError **error);
+_pwtilemap_pitile_id(PwTileMap *self, GError **error);
 static gboolean
 _pwtilemap_from_role(PwTileMap *self, const gchar *role, GKeyFile *piwall,
 		     GError **error);
 static gboolean
-_pwtilemap_get_rect(GKeyFile *keyfile, const gchar *section, PwRect *rect,
+_pwtilemap_get_rect(PwTileMap *self, const gchar *section, PwRect *rect,
 		    GError **error);
-static GKeyFile *_pwtilemap_keyfile(const gchar *dotfile, GError **);
-static gdouble _pwtilemap_kf_double(GKeyFile *keyfile,
-				    const gchar *group, const gchar *key,
-				    GError **error);
-static gchar * _pwtilemap_kf_string(GKeyFile *keyfile,
-				    const gchar *group, const gchar *key,
-				    GError **error);
 
 static void scale_init(Scale *self, gdouble factor, gdouble offset);
 static void scale_from_factor_point(Scale *self, gdouble factor, gdouble old, gdouble new);
@@ -221,10 +215,12 @@ pwtilemap_define(PwTileMap *self, GError **error)
   gchar *role = NULL;
   GKeyFile *piwall = NULL;
 
-  /* Fetch .piwall file if needed */
+  /* Fetch definitions from .pitile and .piwall if needed */
   if (self->flags & (WANT_CONFIG | WANT_ROLE | WANT_AUTO)) {
-    if (! (piwall = _pwtilemap_keyfile(".piwall", error))) {
-      goto fail;
+    if (self->defs == NULL) {
+      if (! (self->defs = pwdefs_create_tile(error))) {
+	goto fail;
+      }
     }
   }
 
@@ -255,26 +251,26 @@ pwtilemap_define(PwTileMap *self, GError **error)
 
   } else if (self->flags & WANT_CONFIG) {
     /* Looking up id in config gives role */
-    if (! g_key_file_has_group(piwall, self->config)) {
-      ERROR(0, "No [%s] section in ~/.piwall", self->config);
+    if (! pwdefs_has_section(self->defs, self->config)) {
+      ERROR(0, "No [%s] section in ~/.pitile or ~/.piwall", self->config);
       goto fail;
     }
-    if ((id = _pwtilemap_tile_id(error)) == NULL) {
+    if ((id = _pwtilemap_tile_id(self, error)) == NULL) {
       goto fail;
     }
-    if ((role = _pwtilemap_kf_string(piwall, self->config, id, error)) == NULL) {
+    if ((role = pwdefs_string(self->defs, self->config, id, error)) == NULL) {
       g_clear_error(error);
-      ERROR(0, "No [%s]%s in ~/.piwall", self->config, id);
+      ERROR(0, "No %s in [%s] in ~/.pitile or ~/.piwall", id, self->config);
       goto fail;
     }
     if (! _pwtilemap_from_role(self, role, piwall, error)) goto fail;
 
   } else if (self->flags & WANT_ROLE) {
     if (! _pwtilemap_from_role(self, self->role, piwall, error)) goto fail;
-    
+
   } else if (self->flags & WANT_AUTO) {
     /* Get role (id) from .pitile */
-    if ((id = _pwtilemap_tile_id(error)) == NULL) {
+    if ((id = _pwtilemap_tile_id(self, error)) == NULL) {
       goto fail;
     }
 
@@ -284,7 +280,6 @@ pwtilemap_define(PwTileMap *self, GError **error)
   result = TRUE;
 
  fail:
-  if (piwall) g_key_file_unref(piwall);
   g_free(role);
   g_free(id);
   return result;
@@ -294,9 +289,9 @@ pwtilemap_define(PwTileMap *self, GError **error)
  *	Get the tile id from .pitile or fall back to hostname
  *-----------------------------------------------------------------------*/
 static char *
-_pwtilemap_tile_id(GError **error)
+_pwtilemap_tile_id(PwTileMap *self, GError **error)
 {
-  char *id = _pwtilemap_pitile_id(error);
+  char *id = _pwtilemap_pitile_id(self, error);
   if (id == NULL) {
     struct utsname uts;
     g_clear_error(error);
@@ -313,33 +308,22 @@ _pwtilemap_tile_id(GError **error)
  *	Get the tile id from .pitile	
  *-----------------------------------------------------------------------*/
 static char *
-_pwtilemap_pitile_id(GError **error)
+_pwtilemap_pitile_id(PwTileMap *self, GError **error)
 {
-  const gchar *home = g_get_home_dir();
-  gchar *pitilefile = NULL;	/* ~/.pitile */
-  GKeyFile *pitile = NULL;
   gchar *id = NULL;
   
-  pitilefile = g_build_filename(home, ".pitile", NULL);
-  pitile = g_key_file_new();
-  if (! g_key_file_load_from_file(pitile, pitilefile, G_KEY_FILE_NONE, error)) {
-    g_prefix_error(error, "loading %s: ", pitilefile);
-    goto fail;
-  }
-  if (! g_key_file_has_group(pitile, "tile")) {
+  if (! pwdefs_has_section(self->defs, "tile")) {
     ERROR(0, "No [tile] section in ~/.pitile");
     goto fail;
   }
-  if ((id = _pwtilemap_kf_string(pitile, "tile", "id", error)) == NULL) {
+  if ((id = pwdefs_string(self->defs, "tile", "id", error)) == NULL) {
     g_clear_error(error);
-    ERROR(0, "No [tile]id in ~/.pitile");
+    ERROR(0, "No id in [tile] section in ~/.pitile");
     goto fail;
   }
   /* SUCCESS */
 
  fail:
-  if (pitile) g_key_file_unref(pitile);
-  g_free(pitilefile);
   return id;
 }
 
@@ -356,33 +340,33 @@ _pwtilemap_from_role(PwTileMap *self, const gchar *role, GKeyFile *piwall,
   gchar *orient_s = NULL;
 
   /* Lookup role */
-  if (! g_key_file_has_group(piwall, role)) {
-    ERROR(0, "No [%s] section in ~/.piwall", role);
+  if (! pwdefs_has_section(self->defs, role)) {
+    ERROR(0, "No [%s] section in ~/.pitile or ~/.piwall", role);
     goto fail;
   }
 
   if (! (self->flags & HAVE_WALL)) {
     /* Get role's optional wall name, default "wall" */
-    if ((wall_s = _pwtilemap_kf_string(piwall, role, "wall", error)) == NULL) {
+    if ((wall_s = pwdefs_string(self->defs, role, "wall", error)) == NULL) {
       g_clear_error(error);
       wall_s = g_strdup("wall");
     }
 
     /* Get wall definition */
-    if (! g_key_file_has_group(piwall, wall_s)) {
-      ERROR(0, "No [%s] section in ~/.piwall", wall_s);
+    if (! pwdefs_has_section(self->defs, wall_s)) {
+      ERROR(0, "No [%s] section in ~/.pitile or ~/.piwall", wall_s);
       goto fail;
     }
-    if (! _pwtilemap_get_rect(piwall, wall_s, &self->wall, error)) goto fail;
+    if (! _pwtilemap_get_rect(self, wall_s, &self->wall, error)) goto fail;
   }
 
   if (! (self->flags & HAVE_TILE)) {
     /* Get this tile's location */
-    if (! _pwtilemap_get_rect(piwall, role, &self->tile, error)) goto fail;
+    if (! _pwtilemap_get_rect(self, role, &self->tile, error)) goto fail;
   }
 
   if (! (self->flags & HAVE_ORIENT)) {
-    if ((orient_s = _pwtilemap_kf_string(piwall, role, "orient", error)) == NULL) {
+    if ((orient_s = pwdefs_string(self->defs, role, "orient", error)) == NULL) {
       /* orient is optional */
       g_clear_error(error);
       self->orient = PW_ORIENT_UP;
@@ -403,13 +387,13 @@ _pwtilemap_from_role(PwTileMap *self, const gchar *role, GKeyFile *piwall,
  *	Get a rectangle definition from a key file
  *-----------------------------------------------------------------------*/
 static gboolean
-_pwtilemap_get_rect(GKeyFile *keyfile, const gchar *section, PwRect *rect,
+_pwtilemap_get_rect(PwTileMap *self, const gchar *section, PwRect *rect,
 		    GError **error)
 {
   double x, y, width, height;
 
   /* Get x and y, but assume 0 if absent */
-  x = _pwtilemap_kf_double(keyfile, section, "x", error);
+  x = pwdefs_double(self->defs, section, "x", error);
   if (g_error_matches(*error,
 		      G_KEY_FILE_ERROR, G_KEY_FILE_ERROR_KEY_NOT_FOUND)) {
     g_clear_error(error);
@@ -417,7 +401,7 @@ _pwtilemap_get_rect(GKeyFile *keyfile, const gchar *section, PwRect *rect,
   } else if (*error) {
     return FALSE;
   }
-  y = _pwtilemap_kf_double(keyfile, section, "y", error);
+  y = pwdefs_double(self->defs, section, "y", error);
   if (g_error_matches(*error,
 		      G_KEY_FILE_ERROR, G_KEY_FILE_ERROR_KEY_NOT_FOUND)) {
     g_clear_error(error);
@@ -427,10 +411,18 @@ _pwtilemap_get_rect(GKeyFile *keyfile, const gchar *section, PwRect *rect,
   }
 
   /* width and height must be present */
-  width = _pwtilemap_kf_double(keyfile, section, "width", error);
-  if (*error) return FALSE;
-  height = _pwtilemap_kf_double(keyfile, section, "height", error);
-  if (*error) return FALSE;
+  width = pwdefs_double(self->defs, section, "width", error);
+  if (*error) {
+    g_clear_error(error);
+    ERROR(0, "No width in [%s] in ~/.pitile or ~/.piwall", section);
+    return FALSE;
+  }
+  height = pwdefs_double(self->defs, section, "height", error);
+  if (*error) {
+    g_clear_error(error);
+    ERROR(0, "No height in [%s] in ~/.pitile or ~/.piwall", section);
+    return FALSE;
+  }
 
   PWRECT_SET(*rect, x, y, x+width, y+height);
   return TRUE;
@@ -537,65 +529,6 @@ pwtilemap_map_picture(PwTileMap *self, const PwIntRect *picture,
   dest->y1 = ICLIP(0, PWRECT_HEIGHT(self->screen), s.y1);
   g_clear_error(error);
   return TRUE;
-}
-
-/*-----------------------------------------------------------------------
- *	Open e.g. .piwall file
- *-----------------------------------------------------------------------*/
-static GKeyFile *
-_pwtilemap_keyfile(const gchar *dotfile, GError **error)
-{
-  const gchar *home = g_get_home_dir();
-  gchar *filename = NULL;
-  GKeyFile *keyfile = NULL;
-
-  filename = g_build_filename(home, dotfile, NULL);
-  keyfile = g_key_file_new();
-  if (! g_key_file_load_from_file(keyfile, filename, G_KEY_FILE_NONE, error)) {
-    g_prefix_error(error, "loading %s: ", filename);
-    g_key_file_unref(keyfile);
-    keyfile = NULL;
-  }
-  g_free(filename);
-  return keyfile;
-}
-
-/* Extract double, tolerant of trailing whitespace */
-static gdouble
-_pwtilemap_kf_double(GKeyFile *keyfile, const gchar *group, const gchar *key,
-		     GError **error)
-{
-  gdouble result;
-  gchar *value;
-
-  value = g_key_file_get_value(keyfile, group, key, error);
-  if (! value) {
-    return 0.0;
-  } else {
-    gchar *end;
-    value = g_strchomp(value); /* Remove trailing whitespace */
-    result = g_ascii_strtod(value, &end);
-
-    if (end == value || *end  != '\0') {
-      g_set_error(error, G_KEY_FILE_ERROR, G_KEY_FILE_ERROR_INVALID_VALUE,
-		  "Invalid real number for key %s in group %s",
-		  key, group);
-    }
-    g_free(value);
-  }
-  return result;
-}
-
-/* Extract string, removing trailing whitespace */
-static gchar *
-_pwtilemap_kf_string(GKeyFile *keyfile, const gchar *group, const gchar *key,
-		     GError **error)
-{
-  gchar *string = g_key_file_get_string(keyfile, group, key, error);
-  if (string != NULL) {
-    string = g_strchomp(string);
-  }
-  return string;
 }
 
 /*-----------------------------------------------------------------------
@@ -813,6 +746,7 @@ pwtilemap_add_option_group(PwTileMap *self, GOptionContext *context)
 void pwtilemap_free(PwTileMap *self)
 {
   g_free(self->role);
+  if (self->defs) pwdefs_free(self->defs);
   g_free(self);
 }
 

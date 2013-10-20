@@ -55,8 +55,12 @@ typedef struct _PwDefs PwDefs;
 extern PwDefs *pwdefs_create_tile(GError **);
 
 /* Load definitions from a set of files */
-extern PwDefs *pwdefs_create(gsize /*nfiles*/, const gchar **/*files*/,
+extern PwDefs *pwdefs_create(gsize /*nfiles*/,
+			     const gchar *const[]/*filenames*/,
 			     GError **);
+
+/* Check if section exists */
+extern gboolean pwdefs_has_section(PwDefs *, const gchar */*section*/);
 
 /* Fetch string value from named section and key */
 extern gchar *pwdefs_string(PwDefs *,
@@ -74,5 +78,18 @@ extern gdouble pwdefs_double(PwDefs *,
 			     GError **);
 
 extern void pwdefs_free(PwDefs *);
+
+/*-----------------------------------------------------------------------
+ *	Logging support
+ *-----------------------------------------------------------------------*/
+extern void
+pwglog_to_syslog(void);
+
+extern void
+pwglog_set_level(GLogLevelFlags);
+
+extern void
+pwglog_handler(const gchar */*domain*/, GLogLevelFlags /*level*/,
+	       const gchar */*message*/, gpointer /*userdata*/);
 
 #endif /* INC_pwutil_h */

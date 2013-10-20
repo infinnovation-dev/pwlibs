@@ -18,7 +18,7 @@
  *-----------------------------------------------------------------------
  *	Sensible log output for glib
  *=======================================================================*/
-#include "pwglog.h"
+#include "pwutil.h"
 #include <stdio.h>
 #include <string.h>
 #include <syslog.h>

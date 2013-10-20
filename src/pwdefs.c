@@ -18,18 +18,20 @@
  *-----------------------------------------------------------------------
  *	Encapsulate configuration from .piwall and .pitile
  *=======================================================================*/
-#include "pwdefs.h"
+#include "pwutil.h"
 
 struct _PwDefs {
-  gsize nkeyfiles;
-  GKeyFile **keyfiles;
+  gsize nfiles;
+  GKeyFile **files;
 };
 
+#if 0
 static GQuark
 pwdefs_error_quark(void)
 {
   return g_quark_from_static_string("pwdefs-error");
 }
+#endif
 
 /*-----------------------------------------------------------------------
  *	Load definitions from .pitile and .piwall files
@@ -42,13 +44,14 @@ pwdefs_create_tile(GError **error)
   gchar *files[2];
   files[0] = g_build_filename(home, ".pitile", NULL);
   files[1] = g_build_filename(home, ".piwall", NULL);
-  self = pwdefs_create(2, files, error);
+  self = pwdefs_create(2, (const gchar **)files, error);
   g_free(files[0]);
   g_free(files[1]);
+  return self;
 }
 
 PwDefs *
-pwdefs_create(gsize nfiles, const gchar **files, GError **error)
+pwdefs_create(gsize nfiles, const gchar * const filenames[], GError **error)
 {
   PwDefs *self = g_new0(PwDefs, 1);
   GKeyFile *kf;
@@ -57,19 +60,23 @@ pwdefs_create(gsize nfiles, const gchar **files, GError **error)
   self->files = g_new0(GKeyFile *, nfiles);
   for (i=0; i < nfiles; i++) {
     kf = g_key_file_new();
-    if (! g_key_file_load_from_file(self->pitile, files[i], G_KEY_FILE_NONE,
+    if (! g_key_file_load_from_file(kf,
+				    filenames[i], G_KEY_FILE_NONE,
 				    error)) {
-      if (g_error_matches(*error, G_KEY_FILE_ERROR, G_KEY_FILE_NOT_FOUND)) {
+      if (g_error_matches(*error,
+			  G_KEY_FILE_ERROR, G_KEY_FILE_ERROR_NOT_FOUND) ||
+	  g_error_matches(*error,
+			  G_FILE_ERROR, G_FILE_ERROR_NOENT)) {
 	/* Allow file to be absent */
 	g_clear_error(error);
 	g_key_file_free(kf);
-	kf = NULL
+	kf = NULL;
       } else {
-	g_prefix_error(error, "loading %s: ", files[i]);
+	g_prefix_error(error, "loading %s: ", filenames[i]);
 	goto fail;
       }
     } else {
-      self->keyfiles[self->nkeyfiles ++] = kf;
+      self->files[self->nfiles ++] = kf;
     }
   }
 
@@ -82,6 +89,22 @@ pwdefs_create(gsize nfiles, const gchar **files, GError **error)
 }
 
 /*-----------------------------------------------------------------------
+ *	Check if section exists
+ *-----------------------------------------------------------------------*/
+gboolean
+pwdefs_has_section(PwDefs *self, const gchar *section)
+{
+  int i;
+  for (i=0; i < self->nfiles; i++) {
+    if (g_key_file_has_group(self->files[i], section)) {
+      return TRUE;
+    }
+  }
+
+  return FALSE;
+}
+
+/*-----------------------------------------------------------------------
  *	Fetch string value from named section and key
  *-----------------------------------------------------------------------*/
 gchar *
@@ -90,14 +113,14 @@ pwdefs_string(PwDefs *self,
 	      GError **error)
 {
   gchar *string = NULL;
-  if (self->nkeyfiles == 0) {
+  if (self->nfiles == 0) {
     g_set_error(error, G_KEY_FILE_ERROR, G_KEY_FILE_ERROR_NOT_FOUND,
 		"No definition file found");
   } else {
     int i;
-    for (i=0; i < self->nkeyfiles; i++) {
+    for (i=0; i < self->nfiles; i++) {
       g_clear_error(error);
-      string = g_key_file_get_string(self->pitile, section, key, error);
+      string = g_key_file_get_string(self->files[i], section, key, error);
       if (string != NULL) {
 	break;
       }
@@ -109,7 +132,7 @@ pwdefs_string(PwDefs *self,
 /*-----------------------------------------------------------------------
  *	Fetch int value from named section and key
  *-----------------------------------------------------------------------*/
-gint
+gdouble
 pwdefs_double(PwDefs *self,
 	      const gchar *section, const gchar *key,
 	      GError **error)
@@ -122,7 +145,7 @@ pwdefs_double(PwDefs *self,
     if (end == value || *end != '\0') {
       g_set_error(error, G_KEY_FILE_ERROR, G_KEY_FILE_ERROR_INVALID_VALUE,
 		  "Invalid real number for key %s in group %s",
-		  key, group);
+		  key, section);
     }
     g_free(value);
   }
@@ -139,11 +162,10 @@ void
 pwdefs_free(PwDefs *self)
 {
   int i;
-  for (i=0; i < self->nkeyfiles; i++) {
-    g_key_file_free(self->keyfiles[i]);
+  for (i=0; i < self->nfiles; i++) {
+    g_key_file_free(self->files[i]);
   }
-  g_free(self->keyfiles);
+  g_free(self->files);
   g_free(self);
 }
 
-#endif /* INC_pwdefs_h */
