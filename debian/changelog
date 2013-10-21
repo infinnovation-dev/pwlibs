@@ -1,3 +1,9 @@
+pwlibs (1.5) unstable; urgency=low
+
+  * Add pwnull and pwthrottle
+
+ -- Colin Hogben (Piwall software) <colin@piwall.co.uk>  Mon, 21 Oct 2013 20:12:13 +0100
+
 pwlibs (1.4) unstable; urgency=low
 
   * pwtilemap uses pwdefs

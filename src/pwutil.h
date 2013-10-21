@@ -21,7 +21,9 @@
 #ifndef INC_pwutil_h
 #define INC_pwutil_h
 
-#include "pwtypes.h"
+#include <pwtypes.h>
+#include <pw_IPaint.h>
+#include <time.h>		/* struct timespec */
 
 /* Parse e.g. "example.com:8765" as host and port */
 extern gboolean pwhostport_from_string(const gchar */*hostport*/,
@@ -91,5 +93,19 @@ pwglog_set_level(GLogLevelFlags);
 extern void
 pwglog_handler(const gchar */*domain*/, GLogLevelFlags /*level*/,
 	       const gchar */*message*/, gpointer /*userdata*/);
+
+/*-----------------------------------------------------------------------
+ *	Network throttling
+ *-----------------------------------------------------------------------*/
+typedef struct _PwThrottle PwThrottle;
+
+extern PwThrottle *pwthrottle_create(double /*buffer_size*/, double /*rate*/);
+extern int pwthrottle_check(PwThrottle *, size_t /*nbytes*/,
+			    struct timespec */*wait*/);
+
+/*-----------------------------------------------------------------------
+ *	Null interface implementations
+ *-----------------------------------------------------------------------*/
+extern const pw_IPaint pwnull_ipaint;
 
 #endif /* INC_pwutil_h */
