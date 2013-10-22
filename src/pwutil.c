@@ -141,6 +141,53 @@ pwfit_from_string(PwFit *fit, const gchar *str, GError **error)
   return TRUE;
 }
 
+/* Convert e.g. "left" to PwJustify */
+gboolean
+pwjustify_from_string(PwJustify *justify, const gchar *str, GError **error)
+{
+  if (strcmp(str, "left") == 0) {
+    *justify = PW_JUSTIFY_LEFT;
+  } else if (strcmp(str, "centre") == 0 ||
+	     strcmp(str, "center") == 0) { /* For our cousins */
+    *justify = PW_JUSTIFY_CENTRE;
+  } else if (strcmp(str, "right") == 0) {
+    *justify = PW_JUSTIFY_RIGHT;
+  } else {
+    g_set_error(error, PWUTIL_ERROR,0, "Invalid justify \"%s\"", str);
+    return FALSE;
+  }
+  return TRUE;
+}
+
+/* Convert e.g. "sw" to PwAnchor */
+gboolean
+pwanchor_from_string(PwAnchor *anchor, const gchar *str, GError **error)
+{
+  if (strcmp(str, "n") == 0) {
+    *anchor = PW_ANCHOR_N;
+  } else if (strcmp(str, "s") == 0) {
+    *anchor = PW_ANCHOR_S;
+  } else if (strcmp(str, "e") == 0) {
+    *anchor = PW_ANCHOR_E;
+  } else if (strcmp(str, "w") == 0) {
+    *anchor = PW_ANCHOR_W;
+  } else if (strcmp(str, "c") == 0) {
+    *anchor = PW_ANCHOR_C;
+  } else if (strcmp(str, "nw") == 0) {
+    *anchor = PW_ANCHOR_NW;
+  } else if (strcmp(str, "ne") == 0) {
+    *anchor = PW_ANCHOR_NE;
+  } else if (strcmp(str, "sw") == 0) {
+    *anchor = PW_ANCHOR_SW;
+  } else if (strcmp(str, "se") == 0) {
+    *anchor = PW_ANCHOR_SE;
+  } else {
+    g_set_error(error, PWUTIL_ERROR,0, "Invalid anchor \"%s\"", str);
+    return FALSE;
+  }
+  return TRUE;
+}
+
 /*-----------------------------------------------------------------------
  *	Trace object
  *-----------------------------------------------------------------------*/

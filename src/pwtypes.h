@@ -84,4 +84,23 @@ typedef enum {
   PW_VCTRANSFORM_MIRROR_ROT270 = 7
 } PwVcTransform;
 
+/* Alignment etc. */
+typedef enum {
+  PW_JUSTIFY_LEFT,
+  PW_JUSTIFY_CENTRE,
+  PW_JUSTIFY_RIGHT
+} PwJustify;
+
+typedef enum {
+  PW_ANCHOR_N,
+  PW_ANCHOR_S,
+  PW_ANCHOR_E,
+  PW_ANCHOR_W,
+  PW_ANCHOR_C,
+  PW_ANCHOR_NW,
+  PW_ANCHOR_NE,
+  PW_ANCHOR_SW,
+  PW_ANCHOR_SE
+} PwAnchor;
+
 #endif /* INC_pwtypes_h */

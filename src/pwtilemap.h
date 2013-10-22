@@ -37,7 +37,10 @@ extern void pwtilemap_set_tile(PwTileMap *, const PwRect *);
 extern void pwtilemap_set_orient(PwTileMap *, PwOrient);
 extern void pwtilemap_set_fit(PwTileMap *, PwFit);
 extern void pwtilemap_set_screen(PwTileMap *, const PwIntRect *);
+extern void pwtilemap_get_wall(PwTileMap *, PwRect *);
 extern void pwtilemap_get_tile(PwTileMap *, PwRect *);
+extern void pwtilemap_get_orient(PwTileMap *, PwOrient *);
+extern void pwtilemap_get_fit(PwTileMap *, PwFit *);
 
 extern gboolean pwtilemap_define(PwTileMap *, GError **);
 

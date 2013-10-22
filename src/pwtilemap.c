@@ -198,10 +198,31 @@ pwtilemap_set_screen(PwTileMap *self, const PwIntRect *screen)
   self->screen = *screen;
 }
 
+/*-----------------------------------------------------------------------
+ *	Get attributes
+ *-----------------------------------------------------------------------*/
+void
+pwtilemap_get_wall(PwTileMap *self, PwRect *wall)
+{
+  *wall = self->wall;
+}
+
 void
 pwtilemap_get_tile(PwTileMap *self, PwRect *tile)
 {
   *tile = self->tile;
+}
+
+void
+pwtilemap_get_orient(PwTileMap *self, PwOrient *orient)
+{
+  *orient = self->orient;
+}
+
+void
+pwtilemap_get_fit(PwTileMap *self, PwFit *fit)
+{
+  *fit = self->fit;
 }
 
 /*-----------------------------------------------------------------------
