@@ -562,7 +562,7 @@ _pwtilemap_opt_tilecode(const gchar *UNUSED(option_name), const gchar *value,
   PwTileMap *self = data;
   int code;
   char c;
-  if (sscanf(value, "%d%c", &code, &c) != 2) {
+  if (sscanf(value, "%d%c", &code, &c) != 1) {
     g_set_error(error, G_OPTION_ERROR, G_OPTION_ERROR_FAILED,
 		"Invalid tile code");
     return FALSE;
