@@ -8,7 +8,7 @@ libpwutil_la_CPPFLAGS = $(PW_GLIB_CFLAGS)
 libpwutil_la_LDFLAGS = -version-info $(PWUTIL_VERSION)
 libpwutil_la_LIBADD = $(PW_GLIB_LIBS) -lrt
 
-PWTILEMAP_VERSION=2:0:1
+PWTILEMAP_VERSION=2:1:1
 libpwtilemap_la_SOURCES = pwtilemap.c
 libpwtilemap_la_CPPFLAGS = $(PW_GLIB_CFLAGS)
 libpwtilemap_la_LDFLAGS = -version-info $(PWTILEMAP_VERSION)

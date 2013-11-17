@@ -1,6 +1,5 @@
 Format: http://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
 Upstream-Name: pwlibs
-Source: https://bitbucket.org/ollietech/piwall/
 
 Files: *
 Copyright: 2013 Colin Hogben <colin@piwall.co.uk>
