@@ -2,7 +2,9 @@ include_HEADERS = pwtypes.h pwinterface.h pw_IPaint.h pw_IRead.h pw_IWrite.h \
 	pwutil.h pwtilemap.h
 lib_LTLIBRARIES = libpwutil.la libpwtilemap.la
 
-PWUTIL_VERSION=2:0:1
+AM_CFLAGS = -Wall
+
+PWUTIL_VERSION=3:0:2
 libpwutil_la_SOURCES = pwutil.c pwdefs.c pwglog.c pwthrottle.c pwnull.c
 libpwutil_la_CPPFLAGS = $(PW_GLIB_CFLAGS)
 libpwutil_la_LDFLAGS = -version-info $(PWUTIL_VERSION)

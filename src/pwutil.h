@@ -35,6 +35,10 @@ extern gboolean pwhostport_from_string(const gchar */*hostport*/,
 extern gboolean pwrect_from_string(PwRect *, const gchar *, GError **);
 extern gboolean pwintrect_from_string(PwIntRect *, const gchar *, GError **);
 
+/* Convert e.g. "+0+100" or "-12.5+70%" to position */
+extern gboolean pwpos_from_string(gdouble *, gdouble *, gboolean */*percent*/,
+				  const gchar *, GError **error);
+
 /* Convert e.g. "up" to PwOrient */
 extern gboolean pworient_from_string(PwOrient *, const gchar *, GError **);
 

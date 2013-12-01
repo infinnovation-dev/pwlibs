@@ -1,3 +1,9 @@
+pwlibs (1.8) unstable; urgency=low
+
+  * Add pwpos_from_string
+
+ -- Colin Hogben (Piwall software) <colin@piwall.co.uk>  Sun, 01 Dec 2013 17:23:10 +0000
+
 pwlibs (1.7) unstable; urgency=low
 
   * Fix tile code option parsing

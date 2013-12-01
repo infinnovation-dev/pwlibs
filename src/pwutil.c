@@ -33,13 +33,21 @@ pwutil_error_quark(void)
   return g_quark_from_static_string("pwutil-error");
 }
 
+static GRegex *pwintrect_rx = NULL;
 static GRegex *pwrect_rx = NULL;
+static GRegex *pwpos_rx = NULL;
 
 static void
 _compile_rx(void)
 {
-  pwrect_rx = g_regex_new("^(\\d+)x(\\d+)([-+]\\d+)([-+]\\d+)$", 0, 0,
-			  NULL);
+#define FP_RX "\\d+(?:\\.\\d+)?"
+  pwintrect_rx = g_regex_new("^(\\d+)x(\\d+)([-+]\\d+)([-+]\\d+)$",
+			  0, 0, NULL);
+  pwrect_rx = g_regex_new("^("FP_RX")x("FP_RX")([-+]"FP_RX")([-+]"FP_RX")$",
+			  0, 0, NULL);
+  pwpos_rx = g_regex_new("^([-+]"FP_RX")([-+]"FP_RX")(%?)$",
+			 0, 0, NULL);
+#undef FP_RX
 }
 
 /* Parse e.g. "example.com:8765" as host and port */
@@ -74,11 +82,11 @@ pwintrect_from_string(PwIntRect *rect, const gchar *str, GError **error)
   GMatchInfo *match = NULL;
 
   /* Compile regex on demand */
-  if (pwrect_rx == NULL) {
+  if (pwintrect_rx == NULL) {
     _compile_rx();
   }
 
-  if (! g_regex_match(pwrect_rx, str, 0, &match)) {
+  if (! g_regex_match(pwintrect_rx, str, 0, &match)) {
     g_set_error(error, PWUTIL_ERROR, 0, "Invalid rectangle \"%s\"", str);
     return FALSE;
   }
@@ -88,20 +96,55 @@ pwintrect_from_string(PwIntRect *rect, const gchar *str, GError **error)
   rect->x1 = rect->x0 + atoi(g_match_info_fetch(match, 1));
   rect->y1 = rect->y0 + atoi(g_match_info_fetch(match, 2));
 
+  g_match_info_free(match);
   return TRUE;
 }
 
 gboolean
 pwrect_from_string(PwRect *rect, const gchar *str, GError **error)
 {
-  PwIntRect intrect;
-  if (! pwintrect_from_string(&intrect, str, error)) {
+  GMatchInfo *match = NULL;
+
+  /* Compile regex on demand */
+  if (pwrect_rx == NULL) {
+    _compile_rx();
+  }
+
+  if (! g_regex_match(pwrect_rx, str, 0, &match)) {
+    g_set_error(error, PWUTIL_ERROR, 0, "Invalid rectangle \"%s\"", str);
     return FALSE;
   }
-  rect->x0 = (gdouble) intrect.x0;
-  rect->y0 = (gdouble) intrect.y0;
-  rect->x1 = (gdouble) intrect.x1;
-  rect->y1 = (gdouble) intrect.y1;
+
+  rect->x0 = g_ascii_strtod(g_match_info_fetch(match, 3), NULL);
+  rect->y0 = g_ascii_strtod(g_match_info_fetch(match, 4), NULL);
+  rect->x1 = rect->x0 + g_ascii_strtod(g_match_info_fetch(match, 1), NULL);
+  rect->y1 = rect->y0 + g_ascii_strtod(g_match_info_fetch(match, 2), NULL);
+
+  g_match_info_free(match);
+  return TRUE;
+}
+
+gboolean
+pwpos_from_string(gdouble *x, gdouble *y, gboolean *percent, const gchar *str,
+		  GError **error)
+{
+  GMatchInfo *match = NULL;
+
+  /* Compile regex on demand */
+  if (pwpos_rx == NULL) {
+    _compile_rx();
+  }
+
+  if (! g_regex_match(pwpos_rx, str, 0, &match)) {
+    g_set_error(error, PWUTIL_ERROR, 0, "Invalid position \"%s\"", str);
+    return FALSE;
+  }
+
+  *x = g_ascii_strtod(g_match_info_fetch(match, 1), NULL);
+  *y = g_ascii_strtod(g_match_info_fetch(match, 2), NULL);
+  *percent = g_match_info_fetch(match, 3)[0] != '\0';
+
+  g_match_info_free(match);
   return TRUE;
 }
 

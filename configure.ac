@@ -1,8 +1,9 @@
 # Prelude
-AC_INIT([pwlibs], [1.7], [bug-report@piwall.co.uk])
+AC_INIT([pwlibs], [1.8], [bug-report@piwall.co.uk])
 LT_INIT
 #  Sanity check
 AC_CONFIG_SRCDIR([src/pwutil.c])
+AC_CONFIG_MACRO_DIR([m4])
 AM_INIT_AUTOMAKE([foreign -Wall -Werror])
 # Checks for programs
 AC_PROG_CC
