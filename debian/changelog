@@ -1,3 +1,9 @@
+pwlibs (1.9) unstable; urgency=low
+
+  * pwtilemap: add window
+
+ -- Colin Hogben (Piwall software) <colin@piwall.co.uk>  Tue, 21 Jan 2014 21:17:02 +0000
+
 pwlibs (1.8) unstable; urgency=low
 
   * Add pwpos_from_string

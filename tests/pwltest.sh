@@ -48,7 +48,7 @@ pwl_run() {
     _out="$pwl_stub.out"
     _err="$pwl_stub.err"
     pwl_cmd="$@"
-    "$@" > "$_out" 2> "$_err"
+    $PWL_RUN "$@" > "$_out" 2> "$_err"
     _rc=$?
     (
 	if [ "$_rc" -ne 0 ]; then

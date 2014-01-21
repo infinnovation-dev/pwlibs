@@ -482,9 +482,9 @@ _pwtilemap_from_role(PwTileMap *self, const gchar *role, GKeyFile *piwall,
     if ((orient_s = pwdefs_string(self->defs, role, "orient", error)) == NULL) {
       /* orient is optional */
       g_clear_error(error);
-      self->user.orient = PW_ORIENT_UP;
+      self->orient = PW_ORIENT_UP;
     } else {
-      if (! pworient_from_string(&self->user.orient, orient_s, error)) goto fail;
+      if (! pworient_from_string(&self->orient, orient_s, error)) goto fail;
     }
   }
   /* SUCCESS */
@@ -593,12 +593,12 @@ pwtilemap_map_picture(PwTileMap *self, const PwIntRect *picture,
   Scale w2sx, w2sy;
   PwRect s;
 
-  /* See how picture will fit on windoe
+  /* See how picture will fit on window
      - scale factors for wall to picture coords
   */
-  xmag = (gdouble)PWRECT_WIDTH(*picture) / PWRECT_WIDTH(self->user.window);
-  ymag = (gdouble)PWRECT_HEIGHT(*picture) / PWRECT_HEIGHT(self->user.window);
-  switch (self->user.fit) {
+  xmag = (gdouble)PWRECT_WIDTH(*picture) / PWRECT_WIDTH(self->window);
+  ymag = (gdouble)PWRECT_HEIGHT(*picture) / PWRECT_HEIGHT(self->window);
+  switch (self->fit) {
   case PW_FIT_CLIP:
     xmag = ymag = MIN(xmag, ymag);
     break;
@@ -611,17 +611,17 @@ pwtilemap_map_picture(PwTileMap *self, const PwIntRect *picture,
   }
   /* Scaling from window to picture coords, mapping centre -> centre */
   scale_from_factor_point(&w2px, xmag,
-			  (self->user.window.x0 + self->user.window.x1)/2,
+			  (self->window.x0 + self->window.x1)/2,
 			  (gdouble)PWRECT_WIDTH(*picture)/2);
   scale_from_factor_point(&w2py, ymag,
-			  (self->user.window.y0 + self->user.window.y1)/2,
+			  (self->window.y0 + self->window.y1)/2,
 			  (gdouble)PWRECT_HEIGHT(*picture)/2);
   /* Calculate the rectangle in picture coordinates we want to display
      on the tile */
-  p.x0 = scale(&w2px, self->user.tile.x0);
-  p.x1 = scale(&w2px, self->user.tile.x1);
-  p.y0 = scale(&w2py, self->user.tile.y0);
-  p.y1 = scale(&w2py, self->user.tile.y1);
+  p.x0 = scale(&w2px, self->tile.x0);
+  p.x1 = scale(&w2px, self->tile.x1);
+  p.y0 = scale(&w2py, self->tile.y0);
+  p.y1 = scale(&w2py, self->tile.y1);
   /* Work out crop and region bearing in mind that this rectangle may not lie
      entirely within the picture */
   src->x0 = ICLIP(0, PWRECT_WIDTH(*picture), p.x0);
@@ -635,12 +635,12 @@ pwtilemap_map_picture(PwTileMap *self, const PwIntRect *picture,
   w.y1 = unscale(&w2py, (gdouble)PWRECT_HEIGHT(*picture));
   /* Now in screen coordinates */
   /* tilex -> 0, tilex+tilew -> screenw */
-  switch ((self->user.orient)) {
+  switch ((self->orient)) {
   default:
   case PW_ORIENT_UP:
-    scale_from_points(&w2sx, self->user.tile.x0, self->user.tile.x1,
+    scale_from_points(&w2sx, self->tile.x0, self->tile.x1,
 		      0, PWRECT_WIDTH(self->screen));
-    scale_from_points(&w2sy, self->user.tile.y0, self->user.tile.y1,
+    scale_from_points(&w2sy, self->tile.y0, self->tile.y1,
 		      0, PWRECT_HEIGHT(self->screen));
     s.x0 = scale(&w2sx, w.x0);
     s.x1 = scale(&w2sx, w.x1);
@@ -649,9 +649,9 @@ pwtilemap_map_picture(PwTileMap *self, const PwIntRect *picture,
     *transform = PW_VCTRANSFORM_ROT0;
     break;
   case PW_ORIENT_DOWN:
-    scale_from_points(&w2sx, self->user.tile.x0, self->user.tile.x1,
+    scale_from_points(&w2sx, self->tile.x0, self->tile.x1,
 		      PWRECT_WIDTH(self->screen), 0);
-    scale_from_points(&w2sy, self->user.tile.y0, self->user.tile.y1,
+    scale_from_points(&w2sy, self->tile.y0, self->tile.y1,
 		      PWRECT_HEIGHT(self->screen), 0);
     s.x0 = scale(&w2sx, w.x1);
     s.x1 = scale(&w2sx, w.x0);
@@ -660,9 +660,9 @@ pwtilemap_map_picture(PwTileMap *self, const PwIntRect *picture,
     *transform = PW_VCTRANSFORM_ROT180;
     break;
   case PW_ORIENT_LEFT:
-    scale_from_points(&w2sx, self->user.tile.y0, self->user.tile.y1,
+    scale_from_points(&w2sx, self->tile.y0, self->tile.y1,
 		      PWRECT_WIDTH(self->screen), 0);
-    scale_from_points(&w2sy, self->user.tile.x0, self->user.tile.x1,
+    scale_from_points(&w2sy, self->tile.x0, self->tile.x1,
 		      0, PWRECT_HEIGHT(self->screen));
     s.x0 = scale(&w2sx, w.y1);
     s.x1 = scale(&w2sx, w.y0);
@@ -672,9 +672,9 @@ pwtilemap_map_picture(PwTileMap *self, const PwIntRect *picture,
     *transform = PW_VCTRANSFORM_ROT90;
     break;
   case PW_ORIENT_RIGHT:
-    scale_from_points(&w2sx, self->user.tile.y0, self->user.tile.y1,
+    scale_from_points(&w2sx, self->tile.y0, self->tile.y1,
 		      0, PWRECT_WIDTH(self->screen));
-    scale_from_points(&w2sy, self->user.tile.x0, self->user.tile.x1,
+    scale_from_points(&w2sy, self->tile.x0, self->tile.x1,
 		      PWRECT_HEIGHT(self->screen), 0);
     s.x0 = scale(&w2sx, w.y0);
     s.x1 = scale(&w2sx, w.y1);
