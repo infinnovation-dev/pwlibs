@@ -140,8 +140,8 @@ _pwrectp_parse(const gchar *str, guint need,
   }
   
   if (g_match_info_fetch(match, 1)) {
-    rect->x1 = rect->x0 + g_ascii_strtod(g_match_info_fetch(match, 5), NULL);
-    rect->y1 = rect->y0 + g_ascii_strtod(g_match_info_fetch(match, 6), NULL);
+    rect->x1 = rect->x0 + g_ascii_strtod(g_match_info_fetch(match, 2), NULL);
+    rect->y1 = rect->y0 + g_ascii_strtod(g_match_info_fetch(match, 3), NULL);
     *avail |= RECT_SIZE;
   } else {
     if (need & RECT_SIZE) {
