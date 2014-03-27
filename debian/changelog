@@ -1,3 +1,15 @@
+pwlibs (1.10) unstable; urgency=low
+
+  * Add pwrectp_from_string, pwrgba_from_string
+
+ -- Colin Hogben (Piwall software) <colin@piwall.co.uk>  Thu, 27 Mar 2014 20:25:29 +0000
+
+pwlibs (1.9u1) unstable; urgency=low
+
+  * Library version numbers
+
+ -- Colin Hogben (Piwall software) <colin@piwall.co.uk>  Wed, 22 Jan 2014 09:09:06 +0000
+
 pwlibs (1.9) unstable; urgency=low
 
   * pwtilemap: add window

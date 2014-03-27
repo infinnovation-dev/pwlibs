@@ -103,4 +103,8 @@ typedef enum {
   PW_ANCHOR_SE
 } PwAnchor;
 
+typedef struct {
+  guint8 r, g, b, a;
+} PwRGBA;
+
 #endif /* INC_pwtypes_h */

@@ -1,6 +1,6 @@
 /*=======================================================================
  * pwlibs - Libraries used by the PiWall video wall
- * Copyright (C) 2013  Colin Hogben <colin@piwall.co.uk>
+ * Copyright (C) 2013-2014  Colin Hogben <colin@piwall.co.uk>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -34,6 +34,9 @@ extern gboolean pwhostport_from_string(const gchar */*hostport*/,
 /* Convert e.g. "400x300+100+0" to PwRect or PwIntRect */
 extern gboolean pwrect_from_string(PwRect *, const gchar *, GError **);
 extern gboolean pwintrect_from_string(PwIntRect *, const gchar *, GError **);
+/* Similar, but allow percentage */
+extern gboolean pwrectp_from_string(PwRect *, gboolean */*percent*/,
+				    const gchar *str, GError **error);
 
 /* Convert e.g. "+0+100" or "-12.5+70%" to position */
 extern gboolean pwpos_from_string(gdouble *, gdouble *, gboolean */*percent*/,
@@ -50,6 +53,9 @@ extern gboolean pwjustify_from_string(PwJustify *, const gchar *, GError **);
 
 /* Convert e.g. "sw" to PwAnchor */
 extern gboolean pwanchor_from_string(PwAnchor *, const gchar *, GError **);
+
+/* Convert e.g. "#996631" to colour */
+extern gboolean pwrgba_from_string(PwRGBA *, const gchar *, GError **);
 
 /* Trace into a file, controlled by environment variable(s) */
 typedef struct _PwTrace PwTrace;

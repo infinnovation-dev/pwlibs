@@ -273,6 +273,12 @@ pwtilemap_get_fit(PwTileMap *self, PwFit *fit)
   *fit = self->user.fit;
 }
 
+void
+pwtilemap_get_window(PwTileMap *self, PwRect *window)
+{
+  *window = self->user.window;
+}
+
 /*-----------------------------------------------------------------------
  *	Read wall & file definitions from .pitile & .piwall
  *

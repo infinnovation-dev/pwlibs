@@ -4,13 +4,13 @@ lib_LTLIBRARIES = libpwutil.la libpwtilemap.la
 
 AM_CFLAGS = -Wall
 
-PWUTIL_VERSION=3:0:2
+PWUTIL_VERSION=4:0:3
 libpwutil_la_SOURCES = pwutil.c pwdefs.c pwglog.c pwthrottle.c pwnull.c
 libpwutil_la_CPPFLAGS = $(PW_GLIB_CFLAGS)
 libpwutil_la_LDFLAGS = -version-info $(PWUTIL_VERSION)
 libpwutil_la_LIBADD = $(PW_GLIB_LIBS) -lrt
 
-PWTILEMAP_VERSION=2:1:1
+PWTILEMAP_VERSION=3:0:2
 libpwtilemap_la_SOURCES = pwtilemap.c
 libpwtilemap_la_CPPFLAGS = $(PW_GLIB_CFLAGS)
 libpwtilemap_la_LDFLAGS = -version-info $(PWTILEMAP_VERSION)

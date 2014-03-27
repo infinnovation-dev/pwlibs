@@ -1,6 +1,6 @@
 /*=======================================================================
  * pwlibs - Libraries used by the PiWall video wall
- * Copyright (C) 2013  Colin Hogben <colin@piwall.co.uk>
+ * Copyright (C) 2013-2014  Colin Hogben <colin@piwall.co.uk>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -34,7 +34,7 @@ pwutil_error_quark(void)
 }
 
 static GRegex *pwintrect_rx = NULL;
-static GRegex *pwrect_rx = NULL;
+static GRegex *pwrectp_rx = NULL;
 static GRegex *pwpos_rx = NULL;
 
 static void
@@ -43,8 +43,9 @@ _compile_rx(void)
 #define FP_RX "\\d+(?:\\.\\d+)?"
   pwintrect_rx = g_regex_new("^(\\d+)x(\\d+)([-+]\\d+)([-+]\\d+)$",
 			  0, 0, NULL);
-  pwrect_rx = g_regex_new("^("FP_RX")x("FP_RX")([-+]"FP_RX")([-+]"FP_RX")$",
-			  0, 0, NULL);
+  pwrectp_rx = g_regex_new("^(("FP_RX")x("FP_RX"))?"
+			   "(([-+]"FP_RX")([-+]"FP_RX"))?(%)?$",
+			   0, 0, NULL);
   pwpos_rx = g_regex_new("^([-+]"FP_RX")([-+]"FP_RX")(%?)$",
 			 0, 0, NULL);
 #undef FP_RX
@@ -100,27 +101,94 @@ pwintrect_from_string(PwIntRect *rect, const gchar *str, GError **error)
   return TRUE;
 }
 
-gboolean
-pwrect_from_string(PwRect *rect, const gchar *str, GError **error)
+#define RECT_SIZE 0x1		/* Size needed | set */
+#define RECT_POS  0x2		/* Position needed | set */
+#define RECT_ABS  0x4		/* Absolute (no %) needed | set */
+
+/*-----------------------------------------------------------------------
+ *	Parse rectangle in the most lax way, then check constraints.
+ *-----------------------------------------------------------------------*/
+static gboolean
+_pwrectp_parse(const gchar *str, guint need,
+	       PwRect *rect, guint *avail, GError **error)
 {
-  GMatchInfo *match = NULL;
+  GMatchInfo *match;
+  gboolean ok = FALSE;
 
   /* Compile regex on demand */
-  if (pwrect_rx == NULL) {
+  if (pwrectp_rx == NULL) {
     _compile_rx();
   }
 
-  if (! g_regex_match(pwrect_rx, str, 0, &match)) {
+  if (! g_regex_match(pwrectp_rx, str, 0, &match)) {
     g_set_error(error, PWUTIL_ERROR, 0, "Invalid rectangle \"%s\"", str);
     return FALSE;
   }
 
-  rect->x0 = g_ascii_strtod(g_match_info_fetch(match, 3), NULL);
-  rect->y0 = g_ascii_strtod(g_match_info_fetch(match, 4), NULL);
-  rect->x1 = rect->x0 + g_ascii_strtod(g_match_info_fetch(match, 1), NULL);
-  rect->y1 = rect->y0 + g_ascii_strtod(g_match_info_fetch(match, 2), NULL);
+  *avail = 0;
+  if (g_match_info_fetch(match, 4)) {
+    rect->x0 = g_ascii_strtod(g_match_info_fetch(match, 5), NULL);
+    rect->y0 = g_ascii_strtod(g_match_info_fetch(match, 6), NULL);
+    *avail |= RECT_POS;
+  } else {
+    if (need & RECT_POS) {
+      g_set_error(error, PWUTIL_ERROR, 0, "Position missing");
+      goto fail;
+    }
+    rect->x0 = 0;
+    rect->y0 = 0;
+  }
+  
+  if (g_match_info_fetch(match, 1)) {
+    rect->x1 = rect->x0 + g_ascii_strtod(g_match_info_fetch(match, 5), NULL);
+    rect->y1 = rect->y0 + g_ascii_strtod(g_match_info_fetch(match, 6), NULL);
+    *avail |= RECT_SIZE;
+  } else {
+    if (need & RECT_SIZE) {
+      g_set_error(error, PWUTIL_ERROR, 0, "Size of rectangle missing");
+      goto fail;
+    }
+    rect->x1 = rect->x0;
+    rect->y1 = rect->y0;
+  }
 
+  if (! g_match_info_fetch(match, 7)) {
+    /* Absence of "%" means absolute coordinates */
+    *avail |= RECT_ABS;
+  } else {
+    if (need & RECT_ABS) {
+      g_set_error(error, PWUTIL_ERROR, 0, "Percentage not allowed");
+      goto fail;
+    }
+  }
+  ok = TRUE;
+  
+ fail:
   g_match_info_free(match);
+  return ok;
+}
+	       
+gboolean
+pwrect_from_string(PwRect *rect, const gchar *str, GError **error)
+{
+  guint avail;
+  if (! _pwrectp_parse(str, RECT_SIZE | RECT_POS | RECT_ABS,
+		       rect, &avail, error)) {
+    return FALSE;
+  }
+  return TRUE;
+}
+	       
+gboolean
+pwrectp_from_string(PwRect *rect, gboolean *percent, const gchar *str, 
+		    GError **error)
+{
+  guint avail;
+  if (! _pwrectp_parse(str, RECT_SIZE,
+		       rect, &avail, error)) {
+    return FALSE;
+  }
+  *percent = ! (avail & RECT_ABS);
   return TRUE;
 }
 
@@ -128,23 +196,18 @@ gboolean
 pwpos_from_string(gdouble *x, gdouble *y, gboolean *percent, const gchar *str,
 		  GError **error)
 {
-  GMatchInfo *match = NULL;
-
-  /* Compile regex on demand */
-  if (pwpos_rx == NULL) {
-    _compile_rx();
-  }
-
-  if (! g_regex_match(pwpos_rx, str, 0, &match)) {
-    g_set_error(error, PWUTIL_ERROR, 0, "Invalid position \"%s\"", str);
+  PwRect rect;
+  guint avail;
+  if (! _pwrectp_parse(str, RECT_POS, &rect, &avail, error)) {
     return FALSE;
   }
-
-  *x = g_ascii_strtod(g_match_info_fetch(match, 1), NULL);
-  *y = g_ascii_strtod(g_match_info_fetch(match, 2), NULL);
-  *percent = g_match_info_fetch(match, 3)[0] != '\0';
-
-  g_match_info_free(match);
+  if (avail & RECT_SIZE) {
+    g_set_error(error, PWUTIL_ERROR, 0, "Unexpected size before position");
+    return FALSE;
+  }
+  *x = rect.x0;
+  *y = rect.y0;
+  *percent = ! (avail & RECT_ABS);
   return TRUE;
 }
 
@@ -229,6 +292,62 @@ pwanchor_from_string(PwAnchor *anchor, const gchar *str, GError **error)
     return FALSE;
   }
   return TRUE;
+}
+
+/*-----------------------------------------------------------------------
+ *	Convert e.g. "#996600" to PwRGBA
+ *-----------------------------------------------------------------------*/
+static gboolean
+parse_hex2(guint8 *value, const gchar *str)
+{
+  int i;
+  *value = 0;
+  for (i=0; i < 2; i++) {
+    unsigned char c = *str++;
+    if (! isxdigit(c)) {
+      return FALSE;
+    }
+    c = toupper(c);
+    *value *= 16;
+    if ('0' <= c && c <= '9') {
+      *value += c - '0';
+    } else if ('A' <= c && c <= 'F') {
+      *value += c - 'A' + 10;
+    } else {
+      return FALSE;
+    }
+  }
+  return TRUE;
+}
+
+gboolean
+pwrgba_from_string(PwRGBA *rgba, const gchar *str, GError **error)
+{
+  if (str[0] == '#') {
+    if (! parse_hex2(&rgba->r, str+1)) goto badhex;
+    if (! parse_hex2(&rgba->g, str+3)) goto badhex;
+    if (! parse_hex2(&rgba->b, str+5)) goto badhex;
+    str += 7;
+#if WANT_COLOUR_ALPHA
+    if (*str == ';') {
+      char *end;
+      gdouble opacity = strtod(str+1, &end);
+      if (end == str+1) goto badhex;
+      rgba->a = CLAMP((int)(255 * (1.0 - opacity)), 0, 255);
+      str = end;
+    }
+#else
+    rgba->a = 255;
+#endif
+    if (*str != '\0') goto badhex;
+    return TRUE;
+  badhex:
+    g_set_error(error, PWUTIL_ERROR,0, "Invalid hex colour");
+    return FALSE;
+  } else {
+    g_set_error(error, PWUTIL_ERROR,0, "Unknown colour representation");
+    return FALSE;
+  }
 }
 
 /*-----------------------------------------------------------------------
