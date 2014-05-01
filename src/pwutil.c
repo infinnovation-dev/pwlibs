@@ -35,7 +35,6 @@ pwutil_error_quark(void)
 
 static GRegex *pwintrect_rx = NULL;
 static GRegex *pwrectp_rx = NULL;
-static GRegex *pwpos_rx = NULL;
 
 static void
 _compile_rx(void)
@@ -46,8 +45,6 @@ _compile_rx(void)
   pwrectp_rx = g_regex_new("^(("FP_RX")x("FP_RX"))?"
 			   "(([-+]"FP_RX")([-+]"FP_RX"))?(%)?$",
 			   0, 0, NULL);
-  pwpos_rx = g_regex_new("^([-+]"FP_RX")([-+]"FP_RX")(%?)$",
-			 0, 0, NULL);
 #undef FP_RX
 }
 
@@ -114,6 +111,8 @@ _pwrectp_parse(const gchar *str, guint need,
 {
   GMatchInfo *match;
   gboolean ok = FALSE;
+  const gchar *part;
+#define HAS_MATCH(n) ((part = g_match_info_fetch(match, n)) && part[0] != '\0')
 
   /* Compile regex on demand */
   if (pwrectp_rx == NULL) {
@@ -126,7 +125,7 @@ _pwrectp_parse(const gchar *str, guint need,
   }
 
   *avail = 0;
-  if (g_match_info_fetch(match, 4)) {
+  if (HAS_MATCH(4)) {
     rect->x0 = g_ascii_strtod(g_match_info_fetch(match, 5), NULL);
     rect->y0 = g_ascii_strtod(g_match_info_fetch(match, 6), NULL);
     *avail |= RECT_POS;
@@ -139,7 +138,7 @@ _pwrectp_parse(const gchar *str, guint need,
     rect->y0 = 0;
   }
   
-  if (g_match_info_fetch(match, 1)) {
+  if (HAS_MATCH(1)) {
     rect->x1 = rect->x0 + g_ascii_strtod(g_match_info_fetch(match, 2), NULL);
     rect->y1 = rect->y0 + g_ascii_strtod(g_match_info_fetch(match, 3), NULL);
     *avail |= RECT_SIZE;
@@ -152,7 +151,7 @@ _pwrectp_parse(const gchar *str, guint need,
     rect->y1 = rect->y0;
   }
 
-  if (! g_match_info_fetch(match, 7)) {
+  if (! HAS_MATCH(7)) {
     /* Absence of "%" means absolute coordinates */
     *avail |= RECT_ABS;
   } else {
@@ -166,6 +165,7 @@ _pwrectp_parse(const gchar *str, guint need,
  fail:
   g_match_info_free(match);
   return ok;
+#undef HAS_MATCH
 }
 	       
 gboolean
@@ -426,6 +426,13 @@ pwtrace_close(PwTrace *self)
 
 /*-----------------------------------------------------------------------
  *	Formatted trace output
+ *	No embedded text in format, just item specifiers, each optionally
+ *	preceded by a count:
+ *	i	int
+ *	u	unsigned int
+ *	x	unsigned int as hex
+ *	s	char*, null-terminated string
+ *	b	unsigned char *, (count) bytes, each as 2-digit hex
  *-----------------------------------------------------------------------*/
 void
 pwtracef(PwTrace *self, const char *fmt, ...)
