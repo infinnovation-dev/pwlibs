@@ -20,6 +20,7 @@
  *=======================================================================*/
 #include "pwutil.h"
 #include <stdlib.h>
+#include <string.h>
 
 struct _PwDefs {
   gsize nfiles;
@@ -174,6 +175,58 @@ pwdefs_double(PwDefs *self,
     g_free(value);
   }
   return result;
+}
+
+/*-----------------------------------------------------------------------
+ *	List the keys in a section
+ *-----------------------------------------------------------------------*/
+gchar **
+pwdefs_keys(PwDefs *self, const gchar *section, gsize *length)
+{
+  gsize nalloc = 0;
+  gsize nused = 0;
+  gchar **keys = NULL;
+  int i;
+  for (i=0; i < self->nfiles; i++) {
+    gsize nfkeys;
+    gchar **fkeys = g_key_file_get_keys(self->files[i], section,
+					&nfkeys, NULL);
+    if (fkeys) {
+      if (keys == NULL) {
+	/* None previously, so just use these */
+	keys = fkeys;
+	nused = nfkeys;
+	nalloc = nfkeys + 1;
+      } else {
+	/* Need to merge with existing */
+	int j, k;
+	for (j=0; j < nfkeys; j++) {
+	  gboolean found = FALSE;
+	  for (k=0; k < nused; k++) {
+	    if (strcmp(fkeys[j], keys[k]) == 0) {
+	      found = TRUE;
+	      break;
+	    }
+	  }
+	  if (! found) {
+	    /* Need to add to list */
+	    if (nused == nalloc-1) {
+	      /* ... which needs enlarging */
+	      nalloc = MAX(nalloc * 2, 20);
+	      keys = g_renew(gchar *, keys, nalloc);
+	    }
+	    keys[nused ++] = g_strdup(fkeys[j]);
+	  }
+	}
+	g_strfreev(fkeys);
+      }
+    }
+  }
+  if (keys) {
+    keys[nused] = NULL;
+    if (length) *length = nused;
+  }
+  return keys;
 }
 
 void

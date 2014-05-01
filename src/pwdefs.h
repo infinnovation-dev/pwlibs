@@ -45,6 +45,10 @@ extern gdouble pwdefs_double(PwDefs *,
 			     const gchar */*section*/, const gchar */*key*/,
 			     GError **);
 
+/* Get list of keys in a section */
+extern gchar **pwdefs_keys(PwDefs *, const gchar */*section*/,
+			   gsize */*length*/);
+
 extern void pwdefs_free(PwDefs *);
 
 #endif /* INC_pwdefs_h */
