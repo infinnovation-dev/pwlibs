@@ -19,6 +19,7 @@
  *	Encapsulate configuration from .piwall and .pitile
  *=======================================================================*/
 #include "pwutil.h"
+#include <stdlib.h>
 
 struct _PwDefs {
   gsize nfiles;
@@ -132,12 +133,35 @@ pwdefs_string(PwDefs *self,
 /*-----------------------------------------------------------------------
  *	Fetch int value from named section and key
  *-----------------------------------------------------------------------*/
+gint
+pwdefs_int(PwDefs *self,
+	   const gchar *section, const gchar *key,
+	   GError **error)
+{
+  gint result = 0;
+  gchar *value = pwdefs_string(self, section, key, error);
+  if (value != NULL) {
+    gchar *end;
+    result = strtol(value, &end, 0);
+    if (end == value || *end != '\0') {
+      g_set_error(error, G_KEY_FILE_ERROR, G_KEY_FILE_ERROR_INVALID_VALUE,
+		  "Invalid integer for key %s in group %s",
+		  key, section);
+    }
+    g_free(value);
+  }
+  return result;
+}
+
+/*-----------------------------------------------------------------------
+ *	Fetch double value from named section and key
+ *-----------------------------------------------------------------------*/
 gdouble
 pwdefs_double(PwDefs *self,
 	      const gchar *section, const gchar *key,
 	      GError **error)
 {
-  gint result = 0;
+  gdouble result = 0;
   gchar *value = pwdefs_string(self, section, key, error);
   if (value != NULL) {
     gchar *end;
@@ -151,12 +175,6 @@ pwdefs_double(PwDefs *self,
   }
   return result;
 }
-
-/* Fetch double value from named section and key */
-gdouble
-pwdefs_double(PwDefs *,
-	      const gchar */*section*/, const gchar */*key*/,
-	      GError **);
 
 void
 pwdefs_free(PwDefs *self)
