@@ -1,3 +1,9 @@
+pwlibs (1.11) unstable; urgency=low
+
+  * Fix pw*_from_string; add pwdefs_keys
+
+ -- Colin Hogben (Piwall software) <colin@piwall.co.uk>  Thu, 01 May 2014 22:05:07 +0100
+
 pwlibs (1.10u1) unstable; urgency=low
 
   * Fix pwrect*_from_string
