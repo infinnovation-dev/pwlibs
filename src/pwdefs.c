@@ -23,6 +23,7 @@
 #include <string.h>
 
 struct _PwDefs {
+  gint nrefs;
   gsize nfiles;
   GKeyFile **files;
 };
@@ -59,6 +60,7 @@ pwdefs_create(gsize nfiles, const gchar * const filenames[], GError **error)
   GKeyFile *kf;
   int i;
 
+  self->nrefs = 1;
   self->files = g_new0(GKeyFile *, nfiles);
   for (i=0; i < nfiles; i++) {
     kf = g_key_file_new();
@@ -88,6 +90,32 @@ pwdefs_create(gsize nfiles, const gchar * const filenames[], GError **error)
   g_key_file_free(kf);
   pwdefs_free(self);
   return NULL;
+}
+
+/*-----------------------------------------------------------------------
+ *	Deallocation
+ *-----------------------------------------------------------------------*/
+void
+pwdefs_ref(PwDefs *self)
+{
+  ++ self->nrefs;
+}
+
+void
+pwdefs_unref(PwDefs *self)
+{
+  if (-- self->nrefs <= 0) pwdefs_free(self);
+}
+
+void
+pwdefs_free(PwDefs *self)
+{
+  int i;
+  for (i=0; i < self->nfiles; i++) {
+    g_key_file_free(self->files[i]);
+  }
+  g_free(self->files);
+  g_free(self);
 }
 
 /*-----------------------------------------------------------------------
@@ -228,15 +256,3 @@ pwdefs_keys(PwDefs *self, const gchar *section, gsize *length)
   }
   return keys;
 }
-
-void
-pwdefs_free(PwDefs *self)
-{
-  int i;
-  for (i=0; i < self->nfiles; i++) {
-    g_key_file_free(self->files[i]);
-  }
-  g_free(self->files);
-  g_free(self);
-}
-

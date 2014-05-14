@@ -23,10 +23,15 @@
 
 #include <glib.h>
 #include "pwtypes.h"
+#include "pwutil.h"
 
 typedef struct _PwTileMap PwTileMap;
 
 extern PwTileMap *pwtilemap_create(void);
+extern void pwtilemap_ref(PwTileMap *);
+extern void pwtilemap_unref(PwTileMap *);
+extern void pwtilemap_free(PwTileMap *);
+extern void pwtilemap_set_defs(PwTileMap *, PwDefs *);
 extern void pwtilemap_set_tilecode(PwTileMap *, guint /*code*/);
 extern void pwtilemap_set_framesize(PwTileMap *, gdouble /*x*/, gdouble /*y*/);
 extern void pwtilemap_set_auto(PwTileMap *);
@@ -52,6 +57,5 @@ extern gboolean pwtilemap_map_picture(PwTileMap *, const PwIntRect */*pic*/,
 				      GError **);
 extern void pwtilemap_add_options(PwTileMap *, GOptionContext *);
 extern void pwtilemap_add_option_group(PwTileMap *, GOptionContext *);
-extern void pwtilemap_free(PwTileMap *);
 
 #endif /* INC_pwtilemap_h */

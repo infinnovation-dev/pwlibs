@@ -57,6 +57,7 @@ typedef enum {
 } PwTileMapFlags;
 
 struct _PwTileMap {
+  gint nrefs;
   PwTileMapFlags flags;
   /* user-defined */
   struct {
@@ -116,8 +117,9 @@ pwtilemap_error_quark(void)
 PwTileMap *
 pwtilemap_create(void)
 {
-  PwTileMap *self = g_new(PwTileMap, 1);
+  PwTileMap *self = g_new0(PwTileMap, 1);
 
+  self->nrefs = 1;
   self->flags = (SCREEN_WALL | WALL_TILE | WALL_WINDOW);
   self->user.framex = 1.0;
   self->user.framey = 1.0;
@@ -130,6 +132,17 @@ pwtilemap_create(void)
   PWRECT_SET0(self->screen, 1920, 1080);
 
   return self;
+}
+
+/*-----------------------------------------------------------------------
+ *	Set definitions to be looked up
+ *-----------------------------------------------------------------------*/
+void
+pwtilemap_set_defs(PwTileMap *self, PwDefs *defs)
+{
+  if (self->defs) pwdefs_unref(self->defs);
+  self->defs = defs;
+  pwdefs_ref(defs);
 }
 
 /*-----------------------------------------------------------------------
@@ -939,10 +952,23 @@ pwtilemap_add_option_group(PwTileMap *self, GOptionContext *context)
 /*-----------------------------------------------------------------------
  *	Release resources
  *-----------------------------------------------------------------------*/
-void pwtilemap_free(PwTileMap *self)
+void
+pwtilemap_ref(PwTileMap *self)
+{
+  ++ self->nrefs;
+}
+
+void
+pwtilemap_unref(PwTileMap *self)
+{
+  if (-- self->nrefs <= 0) pwtilemap_free(self);
+}
+
+void
+pwtilemap_free(PwTileMap *self)
 {
   g_free(self->user.role);
-  if (self->defs) pwdefs_free(self->defs);
+  if (self->defs) pwdefs_unref(self->defs);
   g_free(self);
 }
 

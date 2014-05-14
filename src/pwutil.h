@@ -77,6 +77,10 @@ extern PwDefs *pwdefs_create(gsize /*nfiles*/,
 			     const gchar *const[]/*filenames*/,
 			     GError **);
 
+extern void pwdefs_ref(PwDefs *);
+extern void pwdefs_unref(PwDefs *);
+extern void pwdefs_free(PwDefs *);
+
 /* Check if section exists */
 extern gboolean pwdefs_has_section(PwDefs *, const gchar */*section*/);
 
@@ -98,8 +102,6 @@ extern gdouble pwdefs_double(PwDefs *,
 /* Get list of keys in a section */
 extern gchar **pwdefs_keys(PwDefs *, const gchar */*section*/,
 			   gsize */*length*/);
-
-extern void pwdefs_free(PwDefs *);
 
 /*-----------------------------------------------------------------------
  *	Logging support
