@@ -1,3 +1,9 @@
+pwlibs (1.13) unstable; urgency=low
+
+  * Add pwtilemap_get_used_window
+
+ -- Colin Hogben (Piwall software) <colin@piwall.co.uk>  Mon, 30 Jun 2014 15:43:21 +0100
+
 pwlibs (1.12) unstable; urgency=low
 
   * Add ref/unref logic to pwdefs & pwtilemap
