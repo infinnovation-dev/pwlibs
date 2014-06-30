@@ -48,6 +48,7 @@ extern void pwtilemap_get_tile(PwTileMap *, PwRect *);
 extern void pwtilemap_get_orient(PwTileMap *, PwOrient *);
 extern void pwtilemap_get_fit(PwTileMap *, PwFit *);
 extern void pwtilemap_get_window(PwTileMap *, PwRect *);
+extern void pwtilemap_get_used_window(PwTileMap *, PwRect *);
 
 extern gboolean pwtilemap_define(PwTileMap *, GError **);
 

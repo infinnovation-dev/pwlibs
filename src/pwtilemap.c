@@ -292,6 +292,12 @@ pwtilemap_get_window(PwTileMap *self, PwRect *window)
   *window = self->user.window;
 }
 
+void
+pwtilemap_get_used_window(PwTileMap *self, PwRect *window)
+{
+  *window = self->window;
+}
+
 /*-----------------------------------------------------------------------
  *	Read wall & file definitions from .pitile & .piwall
  *
