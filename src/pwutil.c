@@ -329,12 +329,12 @@ pwrgba_from_string(PwRGBA *rgba, const gchar *str, GError **error)
     if (! parse_hex2(&rgba->b, str+5)) goto badhex;
     str += 7;
 #if WANT_COLOUR_ALPHA
-    if (*str == ';') {
-      char *end;
-      gdouble opacity = strtod(str+1, &end);
-      if (end == str+1) goto badhex;
-      rgba->a = CLAMP((int)(255 * (1.0 - opacity)), 0, 255);
-      str = end;
+    /* If four hex pairs, assume the last is opacity */
+    if (*str != '\0') {
+      if (! parse_hex2(&rgba->a, str)) goto badhex;
+      str += 2;
+    } else {
+      rgba->a = 255;
     }
 #else
     rgba->a = 255;
