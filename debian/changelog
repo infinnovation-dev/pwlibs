@@ -1,4 +1,14 @@
-pwlibs (1.14) unstable; urgency=medium
+pwlibs (1.15) unstable; urgency=low
+
+  * Fixes to pwtilemap
+
+  * Recognise $HOME
+
+  * Add pwthrottle_destroy
+
+ -- Colin Hogben (Piwall software) <colin@piwall.co.uk>  Sat, 17 Jan 2015 19:04:55 +0000
+
+pwlibs (1.14) unstable; urgency=low
 
   * Split into multiple packages
 
