@@ -1,3 +1,9 @@
+pwlibs (1.14) unstable; urgency=medium
+
+  * Split into multiple packages
+
+ -- Colin Hogben (Piwall software) <colin@piwall.co.uk>  Sat, 17 Jan 2015 16:48:08 +0000
+
 pwlibs (1.13) unstable; urgency=low
 
   * Add pwtilemap_get_used_window

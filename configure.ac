@@ -1,5 +1,5 @@
 # Prelude
-AC_INIT([pwlibs], [1.13], [bug-report@piwall.co.uk])
+AC_INIT([pwlibs], [1.14], [bug-report@piwall.co.uk])
 LT_INIT
 #  Sanity check
 AC_CONFIG_SRCDIR([src/pwutil.c])

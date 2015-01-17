@@ -1,0 +1,3 @@
+usr/include/pwutil.h
+usr/lib/libpwutil*.a
+usr/lib/libpwutil*.so
