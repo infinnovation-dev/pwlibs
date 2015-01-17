@@ -4,7 +4,7 @@ lib_LTLIBRARIES = libpwutil.la libpwtilemap.la
 
 AM_CFLAGS = -Wall
 
-PWUTIL_VERSION=6:1:5
+PWUTIL_VERSION=7:1:6
 libpwutil_la_SOURCES = pwutil.c pwdefs.c pwglog.c pwthrottle.c pwnull.c
 libpwutil_la_CPPFLAGS = $(PW_GLIB_CFLAGS)
 libpwutil_la_LDFLAGS = -version-info $(PWUTIL_VERSION)

@@ -1,6 +1,6 @@
 /*=======================================================================
  * pwlibs - Libraries used by the PiWall video wall
- * Copyright (C) 2013-2014  Colin Hogben <colin@piwall.co.uk>
+ * Copyright (C) 2013-2015  Colin Hogben <colin@piwall.co.uk>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -124,6 +124,7 @@ typedef struct _PwThrottle PwThrottle;
 extern PwThrottle *pwthrottle_create(double /*buffer_size*/, double /*rate*/);
 extern int pwthrottle_check(PwThrottle *, size_t /*nbytes*/,
 			    struct timespec */*wait*/);
+extern void pwthrottle_destroy(PwThrottle *);
 
 /*-----------------------------------------------------------------------
  *	Null interface implementations

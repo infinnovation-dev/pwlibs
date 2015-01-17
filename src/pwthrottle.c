@@ -1,5 +1,6 @@
 /*=======================================================================
  *	Throttle data sent to maximum bit rate
+ * Copyright (C) 2013-2015  Colin Hogben <colin@piwall.co.uk>
  *=======================================================================*/
 #include <pwutil.h>
 
@@ -70,4 +71,10 @@ pwthrottle_check(PwThrottle *self, size_t nbytes, struct timespec *wait)
     TIM_FROM_SECS(*wait, secs);
     return 1;
   }
+}
+
+void
+pwthrottle_destroy(PwThrottle *self)
+{
+  g_free(self);
 }
