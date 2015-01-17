@@ -31,6 +31,30 @@ dest: 1920x1080+0+0
 transform: 0
 EOF
 
+pwl_run ./ttilemap --window=160x90+10+10 1920x1080+0+0 640x480+0+0
+pwl_expect << EOF
+== out ==
+src: 640x480+0+0
+dest: 160x90+10+10
+transform: 0
+EOF
+
+pwl_run ./ttilemap --fit=clip --wall=1920x1080+0+0 --window=160x90+10+10 1280x720+0+0 640x480+0+0
+pwl_expect << EOF
+== out ==
+src: 640x360+0+60
+dest: 106x60+7+7
+transform: 0
+EOF
+
+pwl_run ./ttilemap --window=50x50+25+25% 1920x1080+0+0 640x480+0+0
+pwl_expect << EOF
+== out ==
+src: 640x480+0+0
+dest: 960x540+480+270
+transform: 0
+EOF
+
 #-----------------------------------------------------------------------
 #	Error conditions
 #-----------------------------------------------------------------------

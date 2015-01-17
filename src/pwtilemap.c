@@ -41,6 +41,17 @@ typedef struct {
   gdouble offset;
 } Scale;
 
+/*-----------------------------------------------------------------------
+ *	The window, in wall coordinates (into which the picture is
+ *	mapped) can be either explicitly set [user.wall], or set as a
+ *	percentage of the wall, or the whole wall.
+ *
+ *	The wall (in wall coordinates) can be either set explicitly,
+ *	or extracted from the role, or default to the screen size.
+ *
+ *	The tile (in wall coordinates) can be either set explicitly,
+ *	or extracted from the role, or default to the wall geometry.
+ *-----------------------------------------------------------------------*/
 typedef enum {
   USER_TILECODE = 0x01,		/* Use predefined config */
   USER_AUTO   = 0x02,		/* Get from .pitile */
@@ -125,9 +136,9 @@ pwtilemap_create(void)
   self->user.framey = 1.0;
   self->user.role = NULL;
   self->user.config = NULL;
-  self->user.orient = PW_ORIENT_UP;
-  self->user.fit = PW_FIT_STRETCH;
-  PWRECT_SET(self->user.window, 0, 0, 100, 100);
+  self->orient = self->user.orient = PW_ORIENT_UP;
+  self->fit = self->user.fit = PW_FIT_STRETCH;
+  PWRECT_SET(self->user.window, 0, 0, 100, 100); /* Window 100% of wall */
   /* Assume HD screen until told otherwise */
   PWRECT_SET0(self->screen, 1920, 1080);
 
@@ -314,7 +325,7 @@ pwtilemap_get_used_window(PwTileMap *self, PwRect *window)
  *	wall in the defs files and extract geometry; extract geometry and
  *	(if present) orient and fit.
  *
- *	If the user specified auto, the tile is is used as role name.
+ *	If the user specified auto, the tile id is used as role name.
  *
  *	Alternatively, the user may specify wall and tile geometry
  *	explicitly, together with orient and fit.  
@@ -496,6 +507,10 @@ _pwtilemap_from_role(PwTileMap *self, const gchar *role, GKeyFile *piwall,
     if (! _pwtilemap_get_rect(self, wall_s, &self->wall, error)) goto fail;
   }
   self->flags &= ~ SCREEN_WALL;
+  if (self->flags & WALL_WINDOW) {
+    /* Window is percentage of wall */
+    _pwtilemap_wall_window(self);
+  }
 
   if (! (self->flags & USER_TILE)) {
     /* Get this tile's location */
@@ -533,9 +548,6 @@ _pwtilemap_screen_wall(PwTileMap *self)
   if (self->flags & WALL_TILE) {
     /* Single screen - tile is same as wall */
     self->tile = self->wall;
-    PWRECT_SET(self->tile,
-	       self->screen.x0, self->screen.y0,
-	       self->screen.x1, self->screen.y1);
   }
   if (self->flags & WALL_WINDOW) {
     /* Window is percentage of wall */
@@ -613,6 +625,7 @@ pwtilemap_map_picture(PwTileMap *self, const PwIntRect *picture,
 {
   gdouble xmag, ymag;
   Scale w2px, w2py;
+  PwRect v;
   PwRect p;
   PwRect w;
   Scale w2sx, w2sy;
@@ -641,23 +654,29 @@ pwtilemap_map_picture(PwTileMap *self, const PwIntRect *picture,
   scale_from_factor_point(&w2py, ymag,
 			  (self->window.y0 + self->window.y1)/2,
 			  (gdouble)PWRECT_HEIGHT(*picture)/2);
+  /* Viewport is window, clipped to tile */
+  v.x0 = CLAMP(self->window.x0, self->tile.x0, self->tile.x1);
+  v.x1 = CLAMP(self->window.x1, self->tile.x0, self->tile.x1);
+  v.y0 = CLAMP(self->window.y0, self->tile.y0, self->tile.y1);
+  v.y1 = CLAMP(self->window.y1, self->tile.y0, self->tile.y1);
   /* Calculate the rectangle in picture coordinates we want to display
-     on the tile */
-  p.x0 = scale(&w2px, self->tile.x0);
-  p.x1 = scale(&w2px, self->tile.x1);
-  p.y0 = scale(&w2py, self->tile.y0);
-  p.y1 = scale(&w2py, self->tile.y1);
+     in the viewport */
+  p.x0 = scale(&w2px, v.x0);
+  p.x1 = scale(&w2px, v.x1);
+  p.y0 = scale(&w2py, v.y0);
+  p.y1 = scale(&w2py, v.y1);
   /* Work out crop and region bearing in mind that this rectangle may not lie
      entirely within the picture */
   src->x0 = ICLIP(0, PWRECT_WIDTH(*picture), p.x0);
   src->x1 = ICLIP(0, PWRECT_WIDTH(*picture), p.x1);
   src->y0 = ICLIP(0, PWRECT_HEIGHT(*picture), p.y0);
   src->y1 = ICLIP(0, PWRECT_HEIGHT(*picture), p.y1);
-  /* Wall coordinates of picture */
-  w.x0 = unscale(&w2px, 0);
-  w.x1 = unscale(&w2px, (gdouble)PWRECT_WIDTH(*picture));
-  w.y0 = unscale(&w2py, 0);
-  w.y1 = unscale(&w2py, (gdouble)PWRECT_HEIGHT(*picture));
+  /* Wall coordinates of this region */
+  w.x0 = unscale(&w2px, src->x0);
+  w.x1 = unscale(&w2px, src->x1);
+  w.y0 = unscale(&w2py, src->y0);
+  w.y1 = unscale(&w2py, src->y1);
+
   /* Now in screen coordinates */
   /* tilex -> 0, tilex+tilew -> screenw */
   switch ((self->orient)) {
@@ -918,9 +937,9 @@ _pwtilemap_option_group(PwTileMap *self, gboolean in_main)
     {"tile", 'T', flags, G_OPTION_ARG_CALLBACK, &_pwtilemap_opt_tile,
      "Define tile", "XxY+L+T"},
     {"orient", 'O', flags, G_OPTION_ARG_CALLBACK, &_pwtilemap_opt_orient,
-     "Define orientation", "DIRN"},
+     "Define orientation (up|down|left|right)", "DIRN"},
     {"fit", 'F', flags, G_OPTION_ARG_CALLBACK, &_pwtilemap_opt_fit,
-     "How to fit picture on wall", "FIT"},
+     "How to fit picture on wall (stretch|clip|letterbox)", "FIT"},
     {"autotile", 'A', flags | G_OPTION_FLAG_NO_ARG,
      G_OPTION_ARG_CALLBACK, &_pwtilemap_opt_autotile,
      "Define mapping from .pitile and .piwall", 0},

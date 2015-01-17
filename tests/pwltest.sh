@@ -2,21 +2,13 @@
 #	Functions for pwlibs tests
 #-----------------------------------------------------------------------
 pwl_start() {
+    PWLDIR=`pwd`
+    HOME="$PWLDIR"
+    export HOME
     pwl_stub="/tmp/pwl.$$"
     trap pwl_clean EXIT
     pwl_rc=0
-    if [ -f "$HOME/.pitile" ]; then
-	if [ ! -f "$HOME/.pitile.tsave" ]; then
-	    mv "$HOME/.pitile" "$HOME/.pitile.tsave"
-	fi
-	rm -f "$HOME/.pitile"
-    fi
-    if [ -f "$HOME/.piwall" ]; then
-	if [ ! -f "$HOME/.piwall.tsave" ]; then
-	    mv "$HOME/.piwall" "$HOME/.piwall.tsave"
-	fi
-	rm -f "$HOME/.piwall"
-    fi
+    rm -f "$PWLDIR/.pitile" "$PWLDIR/.piwall"
     LD_LIBRARY_PATH=../src/.libs:${LD_LIBRARY_PATH}
     export LD_LIBRARY_PATH
 }
@@ -28,20 +20,14 @@ pwl_clean() {
 }
 
 pwl_end() {
-    if [ -f "$HOME/.pitile.tsave" ]; then
-	mv "$HOME/.pitile.tsave" "$HOME/.pitile"
-    fi
-    if [ -f "$HOME/.piwall.tsave" ]; then
-	mv "$HOME/.piwall.tsave" "$HOME/.piwall"
-    fi
     return $pwl_rc
 }
 
 pwl_pitile() {
-    cat > "$HOME/.pitile"
+    cat > "$PWLDIR/.pitile"
 }
 pwl_piwall() {
-    cat > "$HOME/.piwall"
+    cat > "$PWLDIR/.piwall"
 }
 
 pwl_run() {

@@ -43,8 +43,13 @@ PwDefs *
 pwdefs_create_tile(GError **error)
 {
   PwDefs *self;
-  const gchar *home = g_get_home_dir();
+  const gchar *home;
   gchar *files[2];
+  /* glib < 2.36 only looks in passwd database */
+  home = g_getenv("HOME");
+  if (home == NULL) {
+    home = g_get_home_dir();
+  }
   files[0] = g_build_filename(home, ".pitile", NULL);
   files[1] = g_build_filename(home, ".piwall", NULL);
   self = pwdefs_create(2, (const gchar **)files, error);
