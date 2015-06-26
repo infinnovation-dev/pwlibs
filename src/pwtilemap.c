@@ -1,6 +1,6 @@
 /*=======================================================================
  * pwlibs - Libraries used by the PiWall video wall
- * Copyright (C) 2013-2014  Colin Hogben <colin@piwall.co.uk>
+ * Copyright (C) 2013-2015  Colin Hogben <colin@piwall.co.uk>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -35,6 +35,8 @@
 
 /* Convert to integer and clip to limits */
 #define ICLIP(l,h,v) CLAMP(ROUND(v),l,h)
+
+#define DBG if (0) g_printerr
 
 typedef struct {
   gdouble factor;
@@ -163,6 +165,7 @@ void
 pwtilemap_set_tilecode(PwTileMap *self, guint code)
 {
   self->flags |= USER_TILECODE;
+  self->flags &= ~ (SCREEN_WALL | WALL_TILE);
   self->user.tilecode = code;
 }
 
@@ -180,6 +183,7 @@ void
 pwtilemap_set_auto(PwTileMap *self)
 {
   self->flags |= USER_AUTO;
+  self->flags &= ~ (USER_CONFIG | USER_ROLE | USER_TILECODE);
 }
 
 void
@@ -192,6 +196,7 @@ pwtilemap_set_role(PwTileMap *self, const gchar *role)
   } else {
     self->flags &= ~ USER_ROLE;
   }
+  self->flags &= ~ (USER_CONFIG | USER_AUTO | USER_TILECODE);
 }
 
 void
@@ -204,6 +209,7 @@ pwtilemap_set_config(PwTileMap *self, const gchar *config)
   } else {
     self->flags &= ~ USER_CONFIG;
   }
+  self->flags &= ~ (USER_ROLE | USER_AUTO | USER_TILECODE);
 }
 
 void
@@ -222,10 +228,16 @@ pwtilemap_set_wall(PwTileMap *self, const PwRect *wall)
   }
 }
 
+/**
+ * Set explicit tile coordinates.
+ * This overrides any geometry defined by tilecode, config, role or auto.
+ * In the absence of any of these, defaults to the wall coordinates.
+ */
 void
 pwtilemap_set_tile(PwTileMap *self, const PwRect *tile)
 {
   self->flags |= USER_TILE;
+  self->flags &= ~ WALL_TILE; 
   self->user.tile = *tile;
   self->tile = self->user.tile;
 }
@@ -246,6 +258,12 @@ pwtilemap_set_fit(PwTileMap *self, PwFit fit)
   self->fit = self->user.fit;
 }
 
+/**
+ * Set explicit window coordinates, possibly as a percentage.
+ * If percent is true, defines the window in terms of percentages of the
+ * wall, otherwise defines explicit coordinates.
+ * By default, the window is equal to the wall.
+ */
 void
 pwtilemap_set_window(PwTileMap *self, const PwRect *window, gboolean percent)
 {
@@ -264,6 +282,8 @@ pwtilemap_set_screen(PwTileMap *self, const PwIntRect *screen)
 {
   self->screen = *screen;
 
+  DBG("-- pwtilemap_set_screen %p "PWINTRECT_FORMAT"\n", self,
+      PWRECT_ARGS(*screen));
   /* If wall / tile / window derived, (re)calculate them */
   if (self->flags & SCREEN_WALL) {
     _pwtilemap_screen_wall(self);
@@ -329,6 +349,22 @@ pwtilemap_get_used_window(PwTileMap *self, PwRect *window)
  *
  *	Alternatively, the user may specify wall and tile geometry
  *	explicitly, together with orient and fit.  
+ *
+ *-----------------------------------------------------------------------
+ *	- window is user.window if USER_WINDOW, else percentage
+ *	  of wall (given by user.window, default 100%)
+ *	- wall is user.wall if USER_WALL, else default if USER_TILECODE,
+ *	  else $role.wall if USER_CONFIG or USER_ROLE or USER_AUTO,
+ *	  else screen (if SCREEN_WALL).
+ *	- tile is user.tile if USER_TILE, else defined if USER_TILECODE,
+ *	  else $role.tile if USER_CONFIG or USER_ROLE or USER_AUTO,
+ *	  else wall (if WALL_TILE).
+ *	- $role.wall is [$wallname].* where $wallname is [$role].wall
+ *	  if defined else "wall"
+ *	- $role is user.role if USER_ROLE, or $id if USER_AUTO, else
+ *	  [$config].$id
+ *	- $id is [tile].id if defined, else hostname
+ *	- $config is user.config if USER_CONFIG
  *-----------------------------------------------------------------------*/
 gboolean
 pwtilemap_define(PwTileMap *self, GError **error)
@@ -338,9 +374,11 @@ pwtilemap_define(PwTileMap *self, GError **error)
   gchar *role = NULL;
   GKeyFile *piwall = NULL;
 
+  DBG("--pwtilemap_define %p flags=%#x \n", self, self->flags);
   /* Fetch definitions from .pitile and .piwall if needed */
   if (self->flags & (USER_CONFIG | USER_ROLE | USER_AUTO)) {
     if (self->defs == NULL) {
+      DBG("need defs - pwdefs_create_tile()\n");
       if (! (self->defs = pwdefs_create_tile(error))) {
 	goto fail;
       }
@@ -350,30 +388,46 @@ pwtilemap_define(PwTileMap *self, GError **error)
   if (self->flags & USER_TILECODE) {
     gdouble fx = self->user.framex;
     gdouble fy = self->user.framey;
+    DBG("USER_TILECODE %d\n", self->user.tilecode);
+#define TILECODE(nx,ny,ix,iy) do {\
+      PWRECT_SET0(self->wall, 16*((nx-1)*fx+1), 9*((ny-1)*fy+1));\
+      PWRECT_SET(self->tile, 16*ix*fx, 9*iy*fy, 16*(ix*fx+1), 9*(iy*fy+1));\
+    } while (0)
     switch (self->user.tilecode) {
-    case 41:			/* 2x2, top left */
-      PWRECT_SET0(self->wall, 16*(fx+1), 9*(fy+1));
-      PWRECT_SET(self->tile, 16*0, 9*0, 16*1, 9*1);
-      break;
-    case 42:			/* 2x2, top right */
-      PWRECT_SET0(self->wall, 16*(fx+1), 9*(fy+1));
-      PWRECT_SET(self->tile, 16*fx, 9*0, 16*(fx+1), 9*1);
-      break;
-    case 43:			/* 2x2, bottom left */
-      PWRECT_SET0(self->wall, 16*(fx+1), 9*(fy+1));
-      PWRECT_SET(self->tile, 16*0, 9*fy, 16*1, 9*(fy+1));
-      break;
-    case 44:			/* 2x2, bottom right */
-      PWRECT_SET0(self->wall, 16*(fx+1), 9*(fy+1));
-      PWRECT_SET(self->tile, 16*fx, 9*fy, 16*(fx+1), 9*(fy+1));
-      break;
+      /* 2x1, side by side */
+    case 21: TILECODE(2,1, 0,0); break;
+    case 22: TILECODE(2,1, 1,0); break;
+      /* 2x2, top left, top right, bottom left, bottom right */
+    case 41: TILECODE(2,2, 0,0); break;
+    case 42: TILECODE(2,2, 1,0); break;
+    case 43: TILECODE(2,2, 0,1); break;
+    case 44: TILECODE(2,2, 1,1); break;
+      /* 3x2 */
+    case 61: TILECODE(3,2, 0,0); break;
+    case 62: TILECODE(3,2, 1,0); break;
+    case 63: TILECODE(3,2, 2,0); break;
+    case 64: TILECODE(3,2, 0,1); break;
+    case 65: TILECODE(3,2, 1,1); break;
+    case 66: TILECODE(3,2, 2,1); break;
+      /* 3x3 */
+    case 91: TILECODE(3,3, 0,0); break;
+    case 92: TILECODE(3,3, 1,0); break;
+    case 93: TILECODE(3,3, 2,0); break;
+    case 94: TILECODE(3,3, 0,1); break;
+    case 95: TILECODE(3,3, 1,1); break;
+    case 96: TILECODE(3,3, 2,1); break;
+    case 97: TILECODE(3,3, 0,2); break;
+    case 98: TILECODE(3,3, 1,2); break;
+    case 99: TILECODE(3,3, 2,2); break;
     default:
       ERROR(0, "Unknown tile code %d", self->user.tilecode);
       goto fail;
     }
+#undef TILECODE
 
   } else if (self->flags & USER_CONFIG) {
     /* Looking up id in config gives role */
+    DBG("USER_CONFIG %s\n", self->user.config);
     if (! pwdefs_has_section(self->defs, self->user.config)) {
       ERROR(0, "No [%s] section in ~/.pitile or ~/.piwall", self->user.config);
       goto fail;
@@ -381,36 +435,41 @@ pwtilemap_define(PwTileMap *self, GError **error)
     if ((id = _pwtilemap_tile_id(self, error)) == NULL) {
       goto fail;
     }
+    DBG("  id=%s\n", id);
     if ((role = pwdefs_string(self->defs, self->user.config, id, error)) == NULL) {
       g_clear_error(error);
       ERROR(0, "No %s in [%s] in ~/.pitile or ~/.piwall", id, self->user.config);
       goto fail;
     }
+    DBG("  role=%s\n", role);
     if (! _pwtilemap_from_role(self, role, piwall, error)) goto fail;
 
   } else if (self->flags & USER_ROLE) {
+    DBG("USER_ROLE %s\n", self->user.role);
     if (! _pwtilemap_from_role(self, self->user.role, piwall, error)) goto fail;
 
   } else if (self->flags & USER_AUTO) {
     /* Get role (id) from .pitile */
+    DBG("USER_AUTO\n");
     if ((id = _pwtilemap_tile_id(self, error)) == NULL) {
       goto fail;
     }
+    DBG("  id=role=%s\n", id);
 
     if (! _pwtilemap_from_role(self, id, piwall, error)) goto fail;
 
   } else {
     /* Use explicit wall and/or tile, defaulting to screen (if known) */
     if (self->flags & USER_WALL) {
+      DBG("USER_WALL\n");
       self->wall = self->user.wall;
     } else {
-      self->flags |= SCREEN_WALL;
       _pwtilemap_screen_wall(self);
     }
     if (self->flags & USER_TILE) {
-      self->wall = self->user.tile;
-    } else {
-      self->flags |= WALL_TILE;
+      DBG("USER_TILE\n");
+      self->tile = self->user.tile;
+    } else {			/* WALL_TILE */
       self->tile = self->wall;
     }
     self->orient = self->user.orient;
@@ -418,10 +477,14 @@ pwtilemap_define(PwTileMap *self, GError **error)
   }
 
   if (self->flags & WALL_WINDOW) {
+    DBG("WALL_WINDOW\n");
     _pwtilemap_wall_window(self);
   } else {
     self->window = self->user.window;
   }
+  DBG("wall   "PWRECT_FORMAT"\n", PWRECT_ARGS(self->wall));
+  DBG("window "PWRECT_FORMAT"\n", PWRECT_ARGS(self->window));
+  DBG("tile   "PWRECT_FORMAT"\n", PWRECT_ARGS(self->tile));
 
   /* SUCCESS */
   result = TRUE;
@@ -506,7 +569,6 @@ _pwtilemap_from_role(PwTileMap *self, const gchar *role, GKeyFile *piwall,
     }
     if (! _pwtilemap_get_rect(self, wall_s, &self->wall, error)) goto fail;
   }
-  self->flags &= ~ SCREEN_WALL;
   if (self->flags & WALL_WINDOW) {
     /* Window is percentage of wall */
     _pwtilemap_wall_window(self);
@@ -516,7 +578,6 @@ _pwtilemap_from_role(PwTileMap *self, const gchar *role, GKeyFile *piwall,
     /* Get this tile's location */
     if (! _pwtilemap_get_rect(self, role, &self->tile, error)) goto fail;
   }
-  self->flags &= ~ WALL_TILE;
 
   if (! (self->flags & USER_ORIENT)) {
     if ((orient_s = pwdefs_string(self->defs, role, "orient", error)) == NULL) {
@@ -545,8 +606,10 @@ _pwtilemap_screen_wall(PwTileMap *self)
   PWRECT_SET(self->wall,
 	     self->screen.x0, self->screen.y0,
 	     self->screen.x1, self->screen.y1);
+  DBG("_screen_wall\n");
   if (self->flags & WALL_TILE) {
     /* Single screen - tile is same as wall */
+    DBG("wall -> tile\n");
     self->tile = self->wall;
   }
   if (self->flags & WALL_WINDOW) {
@@ -565,6 +628,7 @@ _pwtilemap_wall_window(PwTileMap *self)
 	     PCTY(self->user.window.y0),
 	     PCTX(self->user.window.x1),
 	     PCTY(self->user.window.y1));
+  DBG("_wall_window "PWRECT_FORMAT"\n", PWRECT_ARGS(self->window));
 #undef PCTX
 #undef PCTY
 }
@@ -631,6 +695,12 @@ pwtilemap_map_picture(PwTileMap *self, const PwIntRect *picture,
   Scale w2sx, w2sy;
   PwRect s;
 
+  DBG("-- pwtilemap_map_picture %p "PWINTRECT_FORMAT"\n",
+      self, PWRECT_ARGS(*picture));
+  DBG("wall   "PWRECT_FORMAT"\n", PWRECT_ARGS(self->wall));
+  DBG("window "PWRECT_FORMAT"\n", PWRECT_ARGS(self->window));
+  DBG("tile   "PWRECT_FORMAT"\n", PWRECT_ARGS(self->tile));
+  DBG("screen "PWINTRECT_FORMAT"\n", PWRECT_ARGS(self->screen));
   /* See how picture will fit on window
      - scale factors for wall to picture coords
   */
@@ -647,6 +717,7 @@ pwtilemap_map_picture(PwTileMap *self, const PwIntRect *picture,
     /* No adjustment */
     break;
   }
+  DBG("xmag %g ymag %g\n", xmag, ymag);
   /* Scaling from window to picture coords, mapping centre -> centre */
   scale_from_factor_point(&w2px, xmag,
 			  (self->window.x0 + self->window.x1)/2,
@@ -659,12 +730,14 @@ pwtilemap_map_picture(PwTileMap *self, const PwIntRect *picture,
   v.x1 = CLAMP(self->window.x1, self->tile.x0, self->tile.x1);
   v.y0 = CLAMP(self->window.y0, self->tile.y0, self->tile.y1);
   v.y1 = CLAMP(self->window.y1, self->tile.y0, self->tile.y1);
+  DBG("viewport "PWRECT_FORMAT"\n", PWRECT_ARGS(v));
   /* Calculate the rectangle in picture coordinates we want to display
      in the viewport */
   p.x0 = scale(&w2px, v.x0);
   p.x1 = scale(&w2px, v.x1);
   p.y0 = scale(&w2py, v.y0);
   p.y1 = scale(&w2py, v.y1);
+  DBG("pic-part "PWRECT_FORMAT"\n", PWRECT_ARGS(p));
   /* Work out crop and region bearing in mind that this rectangle may not lie
      entirely within the picture */
   src->x0 = ICLIP(0, PWRECT_WIDTH(*picture), p.x0);
@@ -676,6 +749,7 @@ pwtilemap_map_picture(PwTileMap *self, const PwIntRect *picture,
   w.x1 = unscale(&w2px, src->x1);
   w.y0 = unscale(&w2py, src->y0);
   w.y1 = unscale(&w2py, src->y1);
+  DBG("wall-part "PWRECT_FORMAT"\n", PWRECT_ARGS(w));
 
   /* Now in screen coordinates */
   /* tilex -> 0, tilex+tilew -> screenw */
@@ -732,6 +806,8 @@ pwtilemap_map_picture(PwTileMap *self, const PwIntRect *picture,
   dest->x1 = ICLIP(0, PWRECT_WIDTH(self->screen), s.x1);
   dest->y0 = ICLIP(0, PWRECT_HEIGHT(self->screen), s.y0);
   dest->y1 = ICLIP(0, PWRECT_HEIGHT(self->screen), s.y1);
+  DBG("src  "PWINTRECT_FORMAT"\n", PWRECT_ARGS(*src));
+  DBG("dest "PWINTRECT_FORMAT"\n", PWRECT_ARGS(*dest));
   g_clear_error(error);
   return TRUE;
 }
@@ -784,6 +860,7 @@ _pwtilemap_opt_wall(const gchar *UNUSED(option_name), const gchar *value,
   PwTileMap *self = data;
   PwRect wall;
   GError *pwerror = NULL;
+  DBG("opt_wall %s\n", value);
   if (! pwrect_from_string(&wall, value, &pwerror)) {
     g_set_error(error, G_OPTION_ERROR, G_OPTION_ERROR_FAILED, "%s", pwerror->message);
     g_error_free(pwerror);
@@ -803,6 +880,7 @@ _pwtilemap_opt_tile(const gchar *UNUSED(option_name), const gchar *value,
   PwTileMap *self = data;
   PwRect tile;
   GError *pwerror = NULL;
+  DBG("opt_tile %s\n", value);
   if (! pwrect_from_string(&tile, value, &pwerror)) {
     g_set_error(error, G_OPTION_ERROR, G_OPTION_ERROR_FAILED, "%s",
 		pwerror->message);
