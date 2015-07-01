@@ -1,3 +1,9 @@
+pwlibs (1.17) unstable; urgency=low
+
+  * Fix handling of --config etc.
+
+ -- Colin Hogben (Piwall software) <colin@piwall.co.uk>  Wed, 01 Jul 2015 18:20:49 +0100
+
 pwlibs (1.16) unstable; urgency=low
 
   * pwtilemap: fix option handling; add more tilecode values
