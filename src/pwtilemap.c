@@ -184,6 +184,7 @@ pwtilemap_set_auto(PwTileMap *self)
 {
   self->flags |= USER_AUTO;
   self->flags &= ~ (USER_CONFIG | USER_ROLE | USER_TILECODE);
+  self->flags &= ~ (SCREEN_WALL | WALL_TILE);
 }
 
 void
@@ -197,6 +198,7 @@ pwtilemap_set_role(PwTileMap *self, const gchar *role)
     self->flags &= ~ USER_ROLE;
   }
   self->flags &= ~ (USER_CONFIG | USER_AUTO | USER_TILECODE);
+  self->flags &= ~ (SCREEN_WALL | WALL_TILE);
 }
 
 void
@@ -210,6 +212,7 @@ pwtilemap_set_config(PwTileMap *self, const gchar *config)
     self->flags &= ~ USER_CONFIG;
   }
   self->flags &= ~ (USER_ROLE | USER_AUTO | USER_TILECODE);
+  self->flags &= ~ (SCREEN_WALL | WALL_TILE);
 }
 
 void
